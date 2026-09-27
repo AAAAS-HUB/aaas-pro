@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>数据源监控 - A股多因子选股</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.4.21/vue.global.prod.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/element-plus/2.5.6/index.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/element-plus/2.5.6/theme-chalk/index.css">
+<style>
+body{display:flex;flex-direction:column}
+.ds-card{background:#21262d;border:1px solid #30363d;border-radius:8px;padding:16px;transition:border-color .2s}
+.ds-card:hover{border-color:#58a6ff}
+.ds-name{font-size:15px;font-weight:600;margin-bottom:4px}
+.ds-type{font-size:12px;color:#8b949e;margin-bottom:6px}
+.ds-status{display:flex;align-items:center;gap:6px;font-size:12px;margin-bottom:4px}
+.ds-rate{font-size:12px;color:#8b949e;margin-bottom:8px}
+.ds-bar{height:4px;background:#30363d;border-radius:2px;overflow:hidden;margin-bottom:6px}
+.ds-bar-fill{height:100%;border-radius:2px;transition:width .5s}
+.ds-meta{font-size:11px;color:#484f58}
+.ds-stars{color:#d29922;letter-spacing:1px}
+.chart-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+.chart-card{background:#21262d;border:1px solid #30363d;border-radius:8px;padding:16px}
+.chart-title{font-size:13px;color:#8b949e;margin-bottom:12px}
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">📈 A股多因子选股</div>
+    <div class="nav">
+      <div class="nav-item" onclick="location.href='index.html'">选股工作台</div>
+      <div class="nav-item" onclick="location.href='schedule.html'">定时任务</div>
+      <div class="nav-item" onclick="location.href='history.html'">历史结果</div>
+      <div class="nav-item active">数据源监控</div>
+      <div class="nav-item" onclick="location.href='personal.html'">个人中心</div>
+    </div>
+    <div class="user-info">
+      <span>量化研究者</span>
+      <span style="padding:2px 8px;background:#23863633;color:#3fb950;border-radius:10px;font-size:11px">VIP</span>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="page-main">
+    <div class="page-header">
+      <div class="page-title">数据源状态监控</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-default" @click="refresh" style="font-size:12px">🔄 刷新</button>
+        <button class="btn-primary" @click="testAll" style="font-size:12px">🧪 测试所有数据源</button>
+      </div>
+    </div>
+
+    <div class="page-body">
+      <!-- Summary stats -->
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px">
+        <div class="card" style="text-align:center">
+          <div style="font-size:24px;font-weight:700;color:#3fb950">{{availableCount}}</div>
+          <div style="font-size:12px;color:#8b949e;margin-top:4px">正常</div>
+        </div>
+        <div class="card" style="text-align:center">
+          <div style="font-size:24px;font-weight:700;color:#d29922">{{fusingCount}}</div>
+          <div style="font-size:12px;color:#8b949e;margin-top:4px">熔断中</div>
+        </div>
+        <div class="card" style="text-align:center">
+          <div style="font-size:24px;font-weight:700;color:#f85149">{{errorCount}}</div>
+          <div style="font-size:12px;color:#8b949e;margin-top:4px">异常</div>
+        </div>
+        <div class="card" style="text-align:center">
+          <div style="font-size:24px;font-weight:700;color:#58a6ff">{{avgRate}}</div>
+          <div style="font-size:12px;color:#8b949e;margin-top:4px">平均成功率</div>
+        </div>
+        <div class="card" style="text-align:center">
+          <div style="font-size:24px;font-weight:700;color:#58a6ff">{{todayCalls}}</div>
+          <div style="font-size:12px;color:#8b949e;margin-top:4px">今日总调用</div>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div class="chart-row">
+        <div class="chart-card">
+          <div class="chart-title">各数据源调用成功率</div>
+          <div id="rateChart" style="height:200px"></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">今日调用量分布</div>
+          <div id="callsChart" style="height:200px"></div>
+        </div>
+      </div>
+
+      <!-- Datasource grid -->
+      <div style="margin-top:20px">
+        <div class="section-title">数据源详情</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px">
+          <div v-for="ds in datasources" :key="ds.name" class="ds-card">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+              <div>
+                <div class="ds-name">{{ds.name}}</div>
+                <div class="ds-type">{{ds.type}}</div>
+              </div>
+              <span style="font-size:11px" class="ds-stars">{{ds.stars}}</span>
+            </div>
+            <div class="ds-status">
+              <span class="status-dot" :class="ds.status==='可用'?'green':ds.status==='熔断'?'yellow':'red'"></span>
+              <span :style="{color:ds.status==='可用'?'#3fb950':ds.status==='熔断'?'#d29922':'#f85149',fontWeight:600}">{{ds.status}}</span>
+              <span style="color:#484f58;margin-left:4px">{{ds.latency}}ms</span>
+            </div>
+            <div class="ds-rate">成功率 {{ds.rate}}% · 今日调用 {{ds.calls}} 次</div>
+            <div class="ds-bar"><div class="ds-bar-fill" :style="{width:ds.rate+'%',background:ds.rate>90?'#3fb950':ds.rate>70?'#d29922':'#f85149'}"></div></div>
+            <div class="ds-meta">最后更新: {{ds.lastUpdate}} · 累计: {{ds.totalCalls}}次</div>
+            <div style="margin-top:8px;display:flex;gap:6px">
+              <button class="btn-default" style="padding:3px 10px;font-size:11px" @click="testSingle(ds)">测试</button>
+              <button class="btn-default" style="padding:3px 10px;font-size:11px" @click="ds.enabled=!ds.enabled">{{ds.enabled?'禁用':'启用'}}</button>
+              <button class="btn-default" style="padding:3px 10px;font-size:11px" @click="viewLog(ds)">日志</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent logs -->
+      <div style="margin-top:20px">
+        <div class="section-title">最近调用日志</div>
+        <div style="background:#21262d;border:1px solid #30363d;border-radius:8px;overflow:hidden">
+          <table class="data-table">
+            <thead>
+              <tr><th>时间</th><th>数据源</th><th>接口</th><th>状态</th><th>耗时</th><th>错误信息</th></tr>
+            </thead>
+            <tbody>
+              <tr v-for="log in recentLogs" :key="log.id">
+                <td style="color:#8b949e;font-size:12px">{{log.time}}</td>
+                <td>{{log.source}}</td>
+                <td style="color:#8b949e;font-size:12px">{{log.api}}</td>
+                <td><span class="tag" :class="log.status==='成功'?'tag-ok':log.status==='熔断'?'tag-warn':'tag-risk'">{{log.status}}</span></td>
+                <td style="color:#8b949e">{{log.latency}}ms</td>
+                <td style="color:#8b949e;font-size:12px">{{log.error || '—'}}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Status Bar -->
+  <div class="status-bar">
+    <div class="status-item"><span class="status-dot green"></span>东方财富 ✓</div>
+    <div class="status-item"><span class="status-dot green"></span>腾讯财经 ✓</div>
+    <div class="status-item"><span class="status-dot yellow"></span>baostock 熔断中</div>
+    <div class="status-item"><span class="status-dot green"></span>新浪财经 ✓</div>
+    <div style="flex:1"></div>
+    <div class="status-item">版本 Web V1.0</div>
+    <div class="status-item">aaas-pro.cn</div>
+  </div>
+</div>
+
+<script>
+const { createApp, ref, computed, onMounted, nextTick } = Vue;
+createApp({
+  setup() {
+    const datasources = ref([
+      { name:'东方财富', type:'实时行情 / 龙虎榜 / 资金流', stars:'★★★★', status:'可用', rate:99.2, calls:12847, latency:23, lastUpdate:'2秒前', totalCalls:'3.2M', enabled:true },
+      { name:'腾讯财经', type:'日线数据 / 实时分时', stars:'★★★★', status:'可用', rate:98.7, calls:8432, latency:31, lastUpdate:'5秒前', totalCalls:'2.1M', enabled:true },
+      { name:'新浪财经', type:'备用日线 / 实时行情', stars:'★★★', status:'可用', rate:95.1, calls:3210, latency:45, lastUpdate:'10秒前', totalCalls:'0.8M', enabled:true },
+      { name:'baostock', type:'日线数据 / 基本面数据', stars:'★★★', status:'熔断', rate:62.3, calls:2156, latency:890, lastUpdate:'3分钟前', totalCalls:'0.5M', enabled:true },
+      { name:'中证指数公司', type:'沪深300成分股 / 指数列表', stars:'★★★★★', status:'可用', rate:100, calls:28, latency:150, lastUpdate:'1小时前', totalCalls:'12K', enabled:true },
+      { name:'交易所官方', type:'成分股列表 / 公告数据', stars:'★★★★★', status:'可用', rate:99.8, calls:156, latency:200, lastUpdate:'30分钟前', totalCalls:'45K', enabled:true },
+    ]);
+
+    const recentLogs = ref([
+      { id:1, time:'15:30:12', source:'东方财富', api:'stock_zh_a_spot_em', status:'成功', latency:21, error:'' },
+      { id:2, time:'15:30:08', source:'腾讯财经', api:'stock_daily', status:'成功', latency:35, error:'' },
+      { id:3, time:'15:30:05', source:'baostock', api:'query_history_data', status:'熔断', latency:890, error:'请求超时' },
+      { id:4, time:'15:29:58', source:'新浪财经', api:'hq_nodesc', status:'成功', latency:48, error:'' },
+      { id:5, time:'15:29:45', source:'东方财富', api:'stock_lhb_hist_em', status:'成功', latency:19, error:'' },
+      { id:6, time:'15:29:30', source:'baostock', api:'query_stock_info', status:'熔断', latency:920, error:'连续超时，触发熔断' },
+      { id:7, time:'15:29:15', source:'中证指数公司', api:'index_weight', status:'成功', latency:142, error:'' },
+      { id:8, time:'15:29:00', source:'腾讯财经', api:'stock_price', status:'成功', latency:28, error:'' },
+    ]);
+
+    const availableCount = computed(()=>datasources.value.filter(d=>d.status==='可用').length);
+    const fusingCount = computed(()=>datasources.value.filter(d=>d.status==='熔断').length);
+    const errorCount = computed(()=>datasources.value.filter(d=>d.status==='异常').length);
+    const avgRate = computed(()=>{
+      const sum = datasources.value.reduce((s,d)=>s+d.rate,0);
+      return (sum/datasources.value.length).toFixed(1)+'%';
+    });
+    const todayCalls = computed(()=>datasources.value.reduce((s,d)=>s+d.calls,0).toLocaleString());
+
+    function renderCharts() {
+      // Rate bar chart
+      const rateChart = echarts.init(document.getElementById('rateChart'));
+      rateChart.setOption({
+        grid:{top:10,right:50,bottom:10,left:10,containLabel:true},
+        xAxis:{type:'value',max:100,axisLine:{show:false},axisLabel:{color:'#8b949e',fontSize:10},splitLine:{lineStyle:{color:'#21262d'}},axisTick:{show:false}},
+        yAxis:{type:'category',data:datasources.value.map(d=>d.name),axisLine:{lineStyle:{color:'#30363d'}},axisLabel:{color:'#e6edf3',fontSize:11},axisTick:{show:false}},
+        series:[{
+          type:'bar',orientation:'horizontal',
+          data:datasources.value.map(d=>d.rate),
+          itemStyle:{
+            color:d=>d.rate>90?'#3fb950':d.rate>70?'#d29922':'#f85149',borderRadius:[0,4,4,0]
+          },
+          barWidth:12,
+          label:{show:true,position:'right',formatter:'{c}%',color:'#8b949e',fontSize:10},
+        }],
+      });
+
+      // Calls pie
+      const callsChart = echarts.init(document.getElementById('callsChart'));
+      callsChart.setOption({
+        tooltip:{trigger:'item'},
+        series:[{
+          type:'pie',radius:['40%','70%'],
+          itemStyle:{borderRadius:4,borderColor:'#161b22',borderWidth:2},
+          label:{color:'#8b949e',fontSize:11,formatter:'{b}\n{c}次'},
+          data:datasources.value.filter(d=>d.enabled).map(d=>({name:d.name,value:d.calls})),
+        }],
+      });
+    }
+
+    function refresh() { renderCharts(); }
+    function testAll() { alert('正在测试所有数据源，请稍候...'); }
+    function testSingle(ds) { alert('测试 '+ds.name+'...'); }
+    function viewLog(ds) { alert(ds.name+' 调用日志'); }
+
+    onMounted(()=>{ nextTick(()=>renderCharts()); });
+
+    return { datasources, recentLogs, availableCount, fusingCount, errorCount, avgRate, todayCalls, refresh, testAll, testSingle, viewLog };
+  }
+}).use(ElementPlus).mount('#app');
+</script>
+</body>
+</html>

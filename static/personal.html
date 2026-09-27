@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>个人中心 - A股多因子选股</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.4.21/vue.global.prod.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/element-plus/2.5.6/index.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/element-plus/2.5.6/theme-chalk/index.css">
+<style>
+body{display:flex;flex-direction:column}
+.info-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #21262d;font-size:13px}
+.info-row:last-child{border-bottom:none}
+.info-label{color:#8b949e}
+.info-value{color:#e6edf3}
+.scheme-card{background:#21262d;border:1px solid #30363d;border-radius:8px;padding:14px;cursor:pointer;transition:all .2s}
+.scheme-card:hover{border-color:#58a6ff;transform:translateY(-1px)}
+.scheme-card.active{border-color:#58a6ff;background:#1f6feb15}
+.scheme-name{font-size:14px;font-weight:600;margin-bottom:4px}
+.scheme-meta{font-size:12px;color:#8b949e;line-height:1.6}
+.scheme-actions{display:flex;gap:6px;margin-top:8px}
+.activity-item{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid #21262d}
+.activity-item:last-child{border-bottom:none}
+.activity-icon{width:32px;height:32px;border-radius:8px;background:#21262d;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.activity-content{flex:1}
+.activity-title{font-size:13px;font-weight:500;margin-bottom:2px}
+.activity-time{font-size:11px;color:#8b949e}
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">📈 A股多因子选股</div>
+    <div class="nav">
+      <div class="nav-item" onclick="location.href='index.html'">选股工作台</div>
+      <div class="nav-item" onclick="location.href='schedule.html'">定时任务</div>
+      <div class="nav-item" onclick="location.href='history.html'">历史结果</div>
+      <div class="nav-item" onclick="location.href='datasource.html'">数据源监控</div>
+      <div class="nav-item active">个人中心</div>
+    </div>
+    <div class="user-info">
+      <span>量化研究者</span>
+      <span style="padding:2px 8px;background:#23863633;color:#3fb950;border-radius:10px;font-size:11px">VIP</span>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="page-main">
+    <div class="page-body">
+      <!-- Top stats -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
+        <div class="card" style="text-align:center">
+          <div style="font-size:28px;font-weight:700;color:#58a6ff">{{userStats.factorSchemes}}</div>
+          <div style="font-size:12px;color:#8b949e;margin-top:4px">我的因子方案</div>
+        </div>
+        <div class="card" style="text-align:center">
+          <div style="font-size:28px;font-weight:700;color:#58a6ff">{{userStats.schedules}}</div>
+          <div style="font-size:12px;color:#8b949e;margin-top:4px">定时任务</div>
+        </div>
+        <div class="card" style="text-align:center">
+          <div style="font-size:28px;font-weight:700;color:#58a6ff">{{userStats.historyCount}}</div>
+          <div style="font-size:12px;color:#8b949e;margin-top:4px">历史结果</div>
+        </div>
+        <div class="card" style="text-align:center">
+          <div style="font-size:28px;font-weight:700;color:#3fb950">{{userStats.vipDays}}</div>
+          <div style="font-size:12px;color:#8b949e;margin-top:4px">VIP剩余天数</div>
+        </div>
+      </div>
+
+      <!-- Two columns -->
+      <div style="display:grid;grid-template-columns:1fr 380px;gap:16px">
+        <!-- Left column -->
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <!-- Account info -->
+          <div>
+            <div class="section-title">账户信息</div>
+            <div class="card">
+              <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
+                <div style="width:56px;height:56px;border-radius:50%;background:#1f6feb;display:flex;align-items:center;justify-content:center;font-size:22px;color:#fff;font-weight:700;flex-shrink:0">投</div>
+                <div>
+                  <div style="font-size:16px;font-weight:700">量化研究者</div>
+                  <div style="font-size:12px;color:#8b949e;margin-top:2px">ID: 10001 · 注册于 2025-01-15</div>
+                </div>
+                <div style="flex:1"></div>
+                <span style="padding:3px 10px;background:#23863633;color:#3fb950;border-radius:10px;font-size:12px">VIP</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">用户名</span><span class="info-value">量化研究者</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">会员类型</span>
+                <span style="color:#3fb950">VIP · 年费会员</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">到期时间</span><span class="info-value">2026-12-31</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">数据源配额</span><span class="info-value">已用 3 / 10 个</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">历史结果</span><span class="info-value">保留 30 次</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">定时任务</span><span class="info-value">不限制</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- My factor schemes -->
+          <div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+              <div class="section-title" style="margin-bottom:0">我的因子方案</div>
+              <button class="btn-primary" style="padding:5px 14px;font-size:12px" @click="showSchemeModal=true">+ 新建方案</button>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px">
+              <div v-for="s in schemes" :key="s.name" class="scheme-card" :class="{active:activeScheme===s.name}" @click="activeScheme=s.name">
+                <div class="scheme-name">{{s.name}} <span v-if="activeScheme===s.name" style="color:#58a6ff">✓</span></div>
+                <div class="scheme-meta">
+                  权重总和: {{s.totalWeight}} · {{s.count}}个因子<br>
+                  创建于 {{s.created}} · 使用 {{s.usedCount}} 次
+                </div>
+                <div class="scheme-actions">
+                  <button class="btn-default" style="flex:1;padding:3px;font-size:11px" @click.stop="applyScheme(s)">应用</button>
+                  <button class="btn-default" style="flex:1;padding:3px;font-size:11px" @click.stop="editScheme(s)">编辑</button>
+                  <button class="btn-default" style="flex:1;padding:3px;font-size:11px" @click.stop="deleteScheme(s.name)">删除</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Usage chart -->
+          <div>
+            <div class="section-title">使用趋势（近30天）</div>
+            <div class="card" style="padding-bottom:0">
+              <div id="usageChart" style="height:160px"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right column -->
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <!-- Recent activity -->
+          <div>
+            <div class="section-title">最近活动</div>
+            <div class="card">
+              <div v-for="a in activities" :key="a.time" class="activity-item">
+                <div class="activity-icon">{{a.icon}}</div>
+                <div class="activity-content">
+                  <div class="activity-title">{{a.title}}</div>
+                  <div class="activity-time">{{a.time}}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick actions -->
+          <div>
+            <div class="section-title">快捷操作</div>
+            <div class="card" style="display:flex;flex-direction:column;gap:8px">
+              <button class="btn-default" style="text-align:left;padding:10px 14px" onclick="location.href='index.html'">📊 前往选股工作台</button>
+              <button class="btn-default" style="text-align:left;padding:10px 14px" onclick="location.href='schedule.html'">⏰ 管理定时任务</button>
+              <button class="btn-default" style="text-align:left;padding:10px 14px" onclick="location.href='history.html'">📁 查看历史结果</button>
+              <button class="btn-default" style="text-align:left;padding:10px 14px" onclick="location.href='datasource.html'">🔗 数据源监控</button>
+            </div>
+          </div>
+
+          <!-- VIP upgrade -->
+          <div>
+            <div class="section-title">会员升级</div>
+            <div class="card" style="border-color:#d29922;background:linear-gradient(135deg,#21262d,#1a1510)">
+              <div style="font-size:14px;font-weight:700;margin-bottom:6px">🌟 升级专业版</div>
+              <div style="font-size:12px;color:#8b949e;line-height:1.7;margin-bottom:12px">
+                解锁更多数据源、自定义因子、API导出、优先计算队列
+              </div>
+              <div style="font-size:18px;font-weight:700;color:#d29922;margin-bottom:10px">¥299/年</div>
+              <button class="btn-primary" style="width:100%;background:#d29922;border-color:#d29922">立即升级</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Status Bar -->
+  <div class="status-bar">
+    <div class="status-item"><span class="status-dot green"></span>东方财富 ✓</div>
+    <div class="status-item"><span class="status-dot green"></span>腾讯财经 ✓</div>
+    <div class="status-item"><span class="status-dot yellow"></span>baostock 熔断中</div>
+    <div class="status-item"><span class="status-dot green"></span>新浪财经 ✓</div>
+    <div style="flex:1"></div>
+    <div class="status-item">版本 Web V1.0</div>
+    <div class="status-item">aaas-pro.cn</div>
+  </div>
+
+  <!-- Scheme Modal -->
+  <div class="modal-overlay" v-if="showSchemeModal" @click.self="showSchemeModal=false">
+    <div class="modal-box">
+      <div class="modal-title">新建因子方案</div>
+      <div class="modal-row">
+        <div class="modal-label">方案名称</div>
+        <div class="modal-input"><input type="text" v-model="newScheme.name" placeholder="我的新方案"></div>
+      </div>
+      <div class="modal-row">
+        <div class="modal-label">预设类型</div>
+        <div class="modal-input">
+          <select v-model="newScheme.preset">
+            <option value="custom">自定义</option>
+            <option value="稳健">稳健型</option>
+            <option value="激进">激进型</option>
+            <option value="价值">价值型</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-row">
+        <div class="modal-label">描述</div>
+        <div class="modal-input"><input type="text" v-model="newScheme.desc" placeholder="可选备注"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-default" @click="showSchemeModal=false">取消</button>
+        <button class="btn-primary" @click="createScheme">创建</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const { createApp, ref, onMounted, nextTick } = Vue;
+createApp({
+  setup() {
+    const userStats = ref({ factorSchemes:5, schedules:4, historyCount:87, vipDays:95 });
+    const activeScheme = ref('我的稳健方案');
+    const showSchemeModal = ref(false);
+    const newScheme = ref({ name:'', preset:'custom', desc:'' });
+
+    const schemes = ref([
+      { name:'我的稳健方案', totalWeight:8.0, count:12, created:'2026-09-25', usedCount:34 },
+      { name:'激进动量策略', totalWeight:10.0, count:8, created:'2026-09-20', usedCount:12 },
+      { name:'价值投资法', totalWeight:8.2, count:10, created:'2026-09-15', usedCount:8 },
+      { name:'科创板专项', totalWeight:7.5, count:9, created:'2026-09-10', usedCount:5 },
+      { name:'防御保守型', totalWeight:6.0, count:11, created:'2026-09-01', usedCount:3 },
+    ]);
+
+    const activities = ref([
+      { icon:'📊', title:'执行「每日盘后选股」成功', time:'2026-09-27 15:30' },
+      { icon:'⏰', title:'定时任务「早盘提醒」已暂停', time:'2026-09-26 18:00' },
+      { icon:'📁', title:'下载了 2026-09-25 选股结果', time:'2026-09-26 09:00' },
+      { icon:'⚙️', title:'因子方案「激进动量」已更新', time:'2026-09-25 20:15' },
+      { icon:'📊', title:'执行「周度深度选股」成功', time:'2026-09-20 16:00' },
+    ]);
+
+    function applyScheme(s) { activeScheme.value = s.name; alert('已应用方案: '+s.name); }
+    function editScheme(s) { alert('编辑方案: '+s.name); }
+    function deleteScheme(name) { schemes.value=schemes.value.filter(s=>s.name!==name); if(activeScheme.value===name) activeScheme.value=''; }
+    function createScheme() {
+      if(!newScheme.value.name) return;
+      schemes.value.push({ name:newScheme.value.name, totalWeight:8.0, count:12, created:new Date().toLocaleDateString('zh-CN'), usedCount:0 });
+      newScheme.value={name:'',preset:'custom',desc:''};
+      showSchemeModal.value=false;
+    }
+
+    function renderChart() {
+      const chart = echarts.init(document.getElementById('usageChart'));
+      const days = Array.from({length:30},(_,i)=>i+1);
+      const runs = days.map(()=>Math.floor(Math.random()*5)+1);
+      chart.setOption({
+        grid:{top:10,right:10,bottom:20,left:35,containLabel:false},
+        xAxis:{type:'category',data:days,axisLine:{lineStyle:{color:'#30363d'}},axisLabel:{show:false},axisTick:{show:false},splitLine:{show:false}},
+        yAxis:{type:'value',axisLine:{show:false},axisLabel:{color:'#8b949e',fontSize:10},splitLine:{lineStyle:{color:'#21262d'}},axisTick:{show:false}},
+        series:[{
+          type:'line',smooth:true,
+          data:runs,
+          areaStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'#1f6feb66'},{offset:1,color:'#1f6feb00'}]}},
+          lineStyle:{color:'#58a6ff',width:2},
+          itemStyle:{color:'#58a6ff'},
+          symbol:'none',
+        }],
+        tooltip:{trigger:'axis',formatter:p=>'第'+p[0].axisValue+'天: '+p[0].value+'次'},
+      });
+    }
+
+    onMounted(()=>{ nextTick(()=>renderChart()); });
+
+    return { userStats, schemes, activeScheme, showSchemeModal, newScheme, activities, applyScheme, editScheme, deleteScheme, createScheme };
+  }
+}).use(ElementPlus).mount('#app');
+</script>
+</body>
+</html>

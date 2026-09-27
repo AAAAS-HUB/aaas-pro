@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>定时任务 - A股多因子选股</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.4.21/vue.global.prod.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/element-plus/2.5.6/index.full.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/element-plus/2.5.6/theme-chalk/index.css">
+<style>
+body{display:flex;flex-direction:column}
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">📈 A股多因子选股</div>
+    <div class="nav">
+      <div class="nav-item" onclick="location.href='index.html'">选股工作台</div>
+      <div class="nav-item active">定时任务</div>
+      <div class="nav-item" onclick="location.href='history.html'">历史结果</div>
+      <div class="nav-item" onclick="location.href='datasource.html'">数据源监控</div>
+      <div class="nav-item" onclick="location.href='personal.html'">个人中心</div>
+    </div>
+    <div class="user-info">
+      <span>量化研究者</span>
+      <span style="padding:2px 8px;background:#23863633;color:#3fb950;border-radius:10px;font-size:11px">VIP</span>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="page-main">
+    <div class="page-header">
+      <div class="page-title">定时任务管理</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-primary" @click="showModal=true">+ 新建任务</button>
+      </div>
+    </div>
+
+    <div class="page-body" style="padding:20px">
+      <!-- Stats row -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
+        <div class="card" style="text-align:center">
+          <div style="font-size:24px;font-weight:700;color:#58a6ff">{{runningCount}}</div>
+          <div style="font-size:12px;color:#8b949e;margin-top:4px">运行中任务</div>
+        </div>
+        <div class="card" style="text-align:center">
+          <div style="font-size:24px;font-weight:700;color:#d29922">{{pausedCount}}</div>
+          <div style="font-size:12px;color:#8b949e;margin-top:4px">已暂停</div>
+        </div>
+        <div class="card" style="text-align:center">
+          <div style="font-size:24px;font-weight:700;color:#8b949e">{{totalRuns}}</div>
+          <div style="font-size:12px;color:#8b949e;margin-top:4px">累计执行次数</div>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div style="background:#161b22;border:1px solid #30363d;border-radius:8px;overflow:hidden">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>任务名称</th>
+              <th>执行频率</th>
+              <th>执行时间</th>
+              <th>执行模式</th>
+              <th>循环间隔</th>
+              <th>上次执行</th>
+              <th>下次执行</th>
+              <th>状态</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="t in schedules" :key="t.id">
+              <td><strong>{{t.name}}</strong></td>
+              <td>{{t.freq}}</td>
+              <td>{{t.time}}</td>
+              <td><span class="tag" :class="t.mode==='盘后'?'tag-ok':'tag-warn'">{{t.mode}}</span></td>
+              <td>{{t.mode==='盘中' ? (t.interval ? t.interval+'分钟' : '—') : '—'}}</td>
+              <td style="color:#8b949e;font-size:12px">{{t.lastRun || '从未'}}</td>
+              <td style="color:#8b949e;font-size:12px">{{t.nextRun || '—'}}</td>
+              <td>
+                <span style="display:flex;align-items:center;gap:6px;font-size:13px">
+                  <span class="status-dot" :class="t.enabled?'green':'red'"></span>
+                  {{t.enabled?'运行中':'已暂停'}}
+                </span>
+              </td>
+              <td>
+                <div style="display:flex;gap:6px">
+                  <button class="btn-default" style="padding:4px 10px;font-size:12px" @click="runNow(t)">立即执行</button>
+                  <button class="btn-default" style="padding:4px 10px;font-size:12px" @click="editTask(t)">编辑</button>
+                  <button class="btn-default" style="padding:4px 10px;font-size:12px" @click="toggle(t)">{{t.enabled?'暂停':'启用'}}</button>
+                  <button class="btn-danger" style="padding:4px 10px;font-size:12px" @click="remove(t.id)">删除</button>
+                </div>
+              </td>
+            </tr>
+            <tr v-if="!schedules.length">
+              <td colspan="8" style="text-align:center;color:#484f58;padding:40px">暂无定时任务，点击右上角新建</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Status Bar -->
+  <div class="status-bar">
+    <div class="status-item"><span class="status-dot green"></span>东方财富 ✓</div>
+    <div class="status-item"><span class="status-dot green"></span>腾讯财经 ✓</div>
+    <div class="status-item"><span class="status-dot yellow"></span>baostock 熔断中</div>
+    <div class="status-item"><span class="status-dot green"></span>新浪财经 ✓</div>
+    <div style="flex:1"></div>
+    <div class="status-item">版本 Web V1.0</div>
+    <div class="status-item">aaas-pro.cn</div>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal-overlay" v-if="showModal" @click.self="closeModal">
+    <div class="modal-box">
+      <div class="modal-title">{{editing?'编辑任务':'新建定时任务'}}</div>
+      <div class="modal-row">
+        <div class="modal-label">任务名称</div>
+        <div class="modal-input"><input type="text" v-model="form.name" placeholder="每日盘后选股"></div>
+      </div>
+      <div class="modal-row">
+        <div class="modal-label">执行频率</div>
+        <div class="modal-input">
+          <select v-model="form.freq">
+            <option value="每天">每天</option>
+            <option value="每周">每周</option>
+            <option value="自定义">自定义</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-row" v-if="form.freq==='每周'">
+        <div class="modal-label">每周星期</div>
+        <div class="modal-input">
+          <select v-model="form.weekday">
+            <option value="1">周一</option>
+            <option value="2">周二</option>
+            <option value="3">周三</option>
+            <option value="4">周四</option>
+            <option value="5">周五</option>
+            <option value="6">周六</option>
+            <option value="0">周日</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-row">
+        <div class="modal-label">执行时间</div>
+        <div class="modal-input"><input type="time" v-model="form.time"></div>
+      </div>
+      <div class="modal-row">
+        <div class="modal-label">执行模式</div>
+        <div class="modal-input">
+          <select v-model="form.mode">
+            <option value="盘后">盘后模式</option>
+            <option value="盘中">盘中模式</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-row" v-if="form.mode==='盘中'">
+        <div class="modal-label">循环间隔</div>
+        <div class="modal-input" style="display:flex;align-items:center;gap:6px">
+          <input type="number" v-model.number="form.interval" min="5" max="240" step="5" style="width:80px" placeholder="30">
+          <span style="font-size:12px;color:#8b949e">分钟（5~240）盘中持续循环执行</span>
+        </div>
+      </div>
+      <div class="modal-row">
+        <div class="modal-label">任务描述</div>
+        <div class="modal-input"><input type="text" v-model="form.desc" placeholder="可选备注"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-default" @click="closeModal">取消</button>
+        <button class="btn-primary" @click="save">{{editing?'保存':'创建'}}</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const { createApp, ref, computed } = Vue;
+createApp({
+  setup() {
+    const showModal = ref(false);
+    const editing = ref(false);
+    const form = ref({ name:'', freq:'每天', weekday:'5', time:'15:30', mode:'盘后', desc:'', interval:null });
+    const editingId = ref(null);
+
+    const schedules = ref([
+      { id:1, name:'每日盘后选股', freq:'每天', time:'15:30', mode:'盘后', enabled:true, lastRun:'2026-09-27 15:30', nextRun:'2026-09-28 15:30', desc:'每日收盘后自动运行全市场选股' },
+      { id:2, name:'早盘选股提醒', freq:'每天', time:'09:25', mode:'盘中', interval:30, enabled:false, lastRun:'2026-09-26 09:25', nextRun:'—', desc:'早盘开盘前选出强势股' },
+      { id:3, name:'周度深度选股', freq:'每周', time:'周五 16:00', mode:'盘后', enabled:true, lastRun:'2026-09-20 16:00', nextRun:'2026-09-27 16:00', desc:'每周五深度扫描，调低阈值' },
+      { id:4, name:'科创板专项', freq:'每天', time:'16:00', mode:'盘后', enabled:true, lastRun:'2026-09-27 16:00', nextRun:'2026-09-28 16:00', desc:'专注科创板高成长股' },
+    ]);
+
+    const runningCount = computed(()=>schedules.value.filter(s=>s.enabled).length);
+    const pausedCount = computed(()=>schedules.value.filter(s=>!s.enabled).length);
+    const totalRuns = ref(342);
+
+    function closeModal() { showModal.value=false; editing.value=false; editingId.value=null; form.value={name:'',freq:'每天',weekday:'5',time:'15:30',mode:'盘后',desc:'',interval:null}; }
+    function save() {
+      if(!form.value.name) return;
+      if(editing.value) {
+        const t = schedules.value.find(s=>s.id===editingId.value);
+        if(t){ t.name=form.value.name; t.freq=form.value.freq; t.time=form.value.time; t.mode=form.value.mode; t.desc=form.value.desc; t.interval=form.value.mode==='盘中'?form.value.interval:null; }
+      } else {
+        schedules.value.push({ id:Date.now(), name:form.value.name, freq:form.value.freq, time:form.value.time, mode:form.value.mode, interval:form.value.mode==='盘中'?form.value.interval:null, enabled:true, lastRun:'从未', nextRun:'—', desc:form.value.desc });
+      }
+      closeModal();
+    }
+    function editTask(t){ editing.value=true; editingId.value=t.id; form.value={name:t.name,freq:t.freq,weekday:t.weekday||'5',time:t.time,mode:t.mode,desc:t.desc||'',interval:t.interval||null}; showModal.value=true; }
+    function toggle(t){ t.enabled=!t.enabled; t.nextRun = t.enabled ? '约 '+t.time : '—'; }
+    function remove(id){ schedules.value=schedules.value.filter(s=>s.id!==id); }
+    function runNow(t){ t.lastRun=new Date().toLocaleString('zh-CN'); alert('任务「'+t.name+'」已开始执行，结果将在历史结果中显示'); }
+
+    return { schedules, runningCount, pausedCount, totalRuns, showModal, editing, form, closeModal, save, editTask, toggle, remove, runNow };
+  }
+}).use(ElementPlus).mount('#app');
+</script>
+</body>
+</html>

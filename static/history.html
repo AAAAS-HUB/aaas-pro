@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>历史结果 - A股多因子选股</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.4.21/vue.global.prod.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/element-plus/2.5.6/index.full.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/element-plus/2.5.6/theme-chalk/index.css">
+<style>
+body{display:flex;flex-direction:column}
+.history-filters{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.history-filters .el-input{width:200px}
+.result-card{display:background:#21262d;border:1px solid #30363d;border-radius:8px;padding:16px;transition:border-color .2s}
+.result-card:hover{border-color:#58a6ff}
+.result-card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.result-card-title{font-size:14px;font-weight:600}
+.result-card-meta{font-size:12px;color:#8b949e;line-height:1.8;margin-bottom:12px}
+.result-card-footer{display:flex;gap:6px}
+.badge{padding:2px 8px;border-radius:10px;font-size:11px}
+.badge-green{background:#23863633;color:#3fb950}
+.badge-red{background:#da363333;color:#f85149}
+.badge-yellow{background:#9e6a0333;color:#d29922}
+.badge-blue{background:#1f6feb33;color:#58a6ff}
+/* view detail modal */
+.detail-modal-overlay{position:fixed;inset:0;background:#0008;display:flex;align-items:center;justify-content:center;z-index:1000}
+.detail-modal{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:24px;width:90vw;max-width:900px;max-height:80vh;overflow-y:auto}
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">📈 A股多因子选股</div>
+    <div class="nav">
+      <div class="nav-item" onclick="location.href='index.html'">选股工作台</div>
+      <div class="nav-item" onclick="location.href='schedule.html'">定时任务</div>
+      <div class="nav-item active">历史结果</div>
+      <div class="nav-item" onclick="location.href='datasource.html'">数据源监控</div>
+      <div class="nav-item" onclick="location.href='personal.html'">个人中心</div>
+    </div>
+    <div class="user-info">
+      <span>量化研究者</span>
+      <span style="padding:2px 8px;background:#23863633;color:#3fb950;border-radius:10px;font-size:11px">VIP</span>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="page-main">
+    <div class="page-header">
+      <div class="page-title">历史结果</div>
+      <div style="font-size:12px;color:#8b949e">最近30次执行记录</div>
+    </div>
+
+    <div class="page-body">
+      <!-- Filters -->
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px">
+        <el-input v-model="search" placeholder="搜索任务名称" style="width:200px" clearable>
+          <template #prefix><span>🔍</span></template>
+        </el-input>
+        <el-date-picker v-model="dateFilter" type="date" placeholder="按日期筛选" style="width:160px" clearable></el-date-picker>
+        <el-select v-model="statusFilter" placeholder="执行状态" style="width:120px" clearable>
+          <el-option label="全部" value=""></el-option>
+          <el-option label="成功" value="成功"></el-option>
+          <el-option label="失败" value="失败"></el-option>
+          <el-option label="进行中" value="进行中"></el-option>
+        </el-select>
+        <el-select v-model="modeFilter" placeholder="执行模式" style="width:120px" clearable>
+          <el-option label="全部" value=""></el-option>
+          <el-option label="盘后" value="盘后"></el-option>
+          <el-option label="盘中" value="盘中"></el-option>
+        </el-select>
+        <div style="flex:1"></div>
+        <span style="font-size:12px;color:#8b949e">共 {{filtered.length}} 条记录</span>
+      </div>
+
+      <!-- Cards grid -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px">
+        <div v-for="h in filtered" :key="h.id" class="result-card">
+          <div class="result-card-header">
+            <div class="result-card-title">{{h.name}}</div>
+            <div style="display:flex;gap:4px;flex-shrink:0">
+              <span class="badge" :class="h.status==='成功'?'badge-green':h.status==='失败'?'badge-red':'badge-yellow'">{{h.status}}</span>
+              <span class="badge badge-blue">{{h.mode}}</span>
+            </div>
+          </div>
+          <div class="result-card-meta">
+            <div>📅 {{h.date}} {{h.time}}</div>
+            <div>📊 核心池 <strong style="color:#3fb950">{{h.coreCount}}</strong> 只 · 观察池 <strong style="color:#d29922">{{h.watchCount}}</strong> 只</div>
+            <div>⏱ 耗时 {{h.duration}} · 参与股票 {{h.stockCount}} 只</div>
+          </div>
+          <div style="font-size:12px;color:#484f58;margin-bottom:10px">
+            因子方案：{{h.scheme}} · 股票池：{{h.pool}}
+          </div>
+          <div class="result-card-footer">
+            <button class="btn-default" style="flex:1;padding:5px 8px;font-size:12px" @click="viewDetail(h)">查看详情</button>
+            <button class="btn-primary" style="flex:1;padding:5px 8px;font-size:12px" @click="download(h)">下载</button>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="!filtered.length" style="text-align:center;color:#484f58;padding:60px 0">
+        <div style="font-size:48px;margin-bottom:12px">📭</div>
+        <div>暂无符合条件的记录</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Status Bar -->
+  <div class="status-bar">
+    <div class="status-item"><span class="status-dot green"></span>东方财富 ✓</div>
+    <div class="status-item"><span class="status-dot green"></span>腾讯财经 ✓</div>
+    <div class="status-item"><span class="status-dot yellow"></span>baostock 熔断中</div>
+    <div class="status-item"><span class="status-dot green"></span>新浪财经 ✓</div>
+    <div style="flex:1"></div>
+    <div class="status-item">版本 Web V1.0</div>
+    <div class="status-item">aaas-pro.cn</div>
+  </div>
+
+  <!-- Detail Modal -->
+  <div class="detail-modal-overlay" v-if="detail" @click.self="detail=null">
+    <div class="detail-modal">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div style="font-size:16px;font-weight:700">{{detail.name}} — 选股详情</div>
+        <button @click="detail=null" style="background:none;border:none;color:#8b949e;font-size:20px;cursor:pointer">×</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px">
+        <div class="card" style="text-align:center;padding:10px">
+          <div style="font-size:20px;font-weight:700;color:#3fb950">{{detail.coreCount}}</div>
+          <div style="font-size:11px;color:#8b949e">核心池</div>
+        </div>
+        <div class="card" style="text-align:center;padding:10px">
+          <div style="font-size:20px;font-weight:700;color:#d29922">{{detail.watchCount}}</div>
+          <div style="font-size:11px;color:#8b949e">观察池</div>
+        </div>
+        <div class="card" style="text-align:center;padding:10px">
+          <div style="font-size:20px;font-weight:700;color:#58a6ff">{{detail.stockCount}}</div>
+          <div style="font-size:11px;color:#8b949e">参与股票</div>
+        </div>
+        <div class="card" style="text-align:center;padding:10px">
+          <div style="font-size:20px;font-weight:700;color:#8b949e">{{detail.duration}}</div>
+          <div style="font-size:11px;color:#8b949e">耗时</div>
+        </div>
+      </div>
+      <div style="margin-bottom:12px;font-size:13px;color:#8b949e">
+        {{detail.date}} {{detail.time}} · {{detail.mode}}模式 · 方案：{{detail.scheme}} · 股票池：{{detail.pool}}
+      </div>
+      <div style="font-size:12px;color:#8b949e;margin-bottom:12px">核心池 TOP10</div>
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>#</th><th>代码</th><th>名称</th><th>板块</th><th>综合得分</th>
+              <th>最新价</th><th>今日涨跌</th><th>20日涨幅</th><th>超额收益</th>
+              <th>PE分位</th><th>业绩增速</th><th>MACD</th><th>二次确认</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(s,i) in detail.top10" :key="s.code">
+              <td style="color:#8b949e">{{i+1}}</td>
+              <td><code style="color:#58a6ff">{{s.code}}</code></td>
+              <td>{{s.name}}</td>
+              <td style="color:#8b949e;font-size:11px">{{s.board}}</td>
+              <td><span :style="{padding:'2px 8px',borderRadius:'12px',fontWeight:700,background:s.score>=8?'#23863633':s.score>=6?'#9e6a0333':'#da363333',color:s.score>=8?'#3fb950':s.score>=6?'#d29922':'#f85149'}">{{s.score.toFixed(2)}}</span></td>
+              <td>{{s.price}}</td>
+              <td :class="s.changePct>=0?'up':'down'">{{s.changePct>=0?'+':''}}{{s.changePct.toFixed(2)}}%</td>
+              <td :class="s.ret20>=0?'up':'down'">{{s.ret20>=0?'+':''}}{{s.ret20.toFixed(2)}}%</td>
+              <td :class="s.excess>=0?'up':'down'">{{s.excess>=0?'+':''}}{{s.excess.toFixed(2)}}%</td>
+              <td>{{s.peRank}}%</td>
+              <td :class="s.profitGrowth>=0?'up':'down'">{{s.profitGrowth>=0?'+':''}}{{s.profitGrowth.toFixed(1)}}%</td>
+              <td><span class="tag" :class="s.macd==='正常'?'tag-ok':'tag-warn'">{{s.macd}}</span></td>
+              <td><span class="tag" :class="s.confirm==='通过'?'tag-ok':'tag-risk'">{{s.confirm}}</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+        <button class="btn-default" @click="detail=null">关闭</button>
+        <button class="btn-primary" @click="download(detail)">下载此结果</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const { createApp, ref, computed } = Vue;
+createApp({
+  setup() {
+    const search = ref('');
+    const dateFilter = ref(null);
+    const statusFilter = ref('');
+    const modeFilter = ref('');
+    const detail = ref(null);
+
+    const stockNames = ['宁德时代','比亚迪','贵州茅台','招商银行','中国平安','中信证券','东方财富','恒瑞医药','海康威视','美的集团','格力电器','隆基绿能','阳光电源','亿纬锂能'];
+    const boards = ['深证','上证','深证','上证','上证','深证','深证','上证','深证','深证','深证','深证','深证','深证'];
+
+    function genTop10(){
+      return Array.from({length:10},(_,i)=>({
+        code:String(600000+Math.floor(Math.random()*20000)).padStart(6,'0'),
+        name: stockNames[i],
+        board: boards[i],
+        score: 10 - i*0.3 + Math.random()*0.5,
+        price: (Math.random()*200+5).toFixed(2),
+        changePct: (Math.random()-0.4)*10,
+        ret20: (Math.random()-0.3)*30,
+        excess: (Math.random()-0.4)*20,
+        peRank: Math.floor(Math.random()*60)+20,
+        profitGrowth: (Math.random()-0.2)*80,
+        macd: Math.random()>0.2?'正常':'走弱',
+        confirm: Math.random()>0.15?'通过':'待确认',
+      }));
+    }
+
+    const history = ref([
+      { id:1, name:'每日盘后选股', date:'2026-09-27', time:'15:30', status:'成功', mode:'盘后', coreCount:42, watchCount:18, stockCount:300, duration:'4分32秒', scheme:'稳健型', pool:'沪深300' },
+      { id:2, name:'早盘选股提醒', date:'2026-09-27', time:'09:25', status:'成功', mode:'盘中', coreCount:31, watchCount:22, stockCount:300, duration:'3分15秒', scheme:'激进型', pool:'沪深300' },
+      { id:3, name:'周度深度选股', date:'2026-09-20', time:'16:00', status:'成功', mode:'盘后', coreCount:56, watchCount:28, stockCount:5000, duration:'8分47秒', scheme:'自定义', pool:'全部A股' },
+      { id:4, name:'科创板专项', date:'2026-09-26', time:'16:00', status:'成功', mode:'盘后', coreCount:23, watchCount:9, stockCount:500, duration:'2分18秒', scheme:'价值型', pool:'科创板指' },
+      { id:5, name:'每日盘后选股', date:'2026-09-26', time:'15:30', status:'失败', mode:'盘后', coreCount:0, watchCount:0, stockCount:0, duration:'—', scheme:'稳健型', pool:'沪深300' },
+      { id:6, name:'早盘选股提醒', date:'2026-09-26', time:'09:25', status:'成功', mode:'盘中', coreCount:28, watchCount:15, stockCount:300, duration:'3分02秒', scheme:'激进型', pool:'沪深300' },
+      { id:7, name:'每日盘后选股', date:'2026-09-25', time:'15:30', status:'成功', mode:'盘后', coreCount:38, watchCount:21, stockCount:300, duration:'4分15秒', scheme:'稳健型', pool:'沪深300' },
+      { id:8, name:'周度深度选股', date:'2026-09-13', time:'16:00', status:'成功', mode:'盘后', coreCount:61, watchCount:33, stockCount:5000, duration:'9分03秒', scheme:'自定义', pool:'全部A股' },
+      { id:9, name:'科创板专项', date:'2026-09-25', time:'16:00', status:'成功', mode:'盘后', coreCount:19, watchCount:11, stockCount:500, duration:'2分11秒', scheme:'价值型', pool:'科创板指' },
+      { id:10, name:'每日盘后选股', date:'2026-09-24', time:'15:30', status:'成功', mode:'盘后', coreCount:45, watchCount:19, stockCount:300, duration:'4分28秒', scheme:'稳健型', pool:'沪深300' },
+    ]);
+
+    history.value.forEach(h => { if(!h.top10) h.top10 = genTop10(); });
+
+    const filtered = computed(()=>{
+      return history.value.filter(h=>{
+        const matchSearch = !search.value || h.name.includes(search.value);
+        const matchStatus = !statusFilter.value || h.status === statusFilter.value;
+        const matchMode = !modeFilter.value || h.mode === modeFilter.value;
+        const matchDate = !dateFilter.value || h.date === String(dateFilter.value).slice(0,10);
+        return matchSearch && matchStatus && matchMode && matchDate;
+      });
+    });
+
+    function viewDetail(h){
+      if(!h.top10) h.top10 = genTop10();
+      detail.value = h;
+    }
+    function download(h){ alert('下载: '+h.name+' ('+h.date+')'); }
+
+    return { search, dateFilter, statusFilter, modeFilter, filtered, detail, viewDetail, download };
+  }
+}).use(ElementPlus).mount('#app');
+</script>
+</body>
+</html>

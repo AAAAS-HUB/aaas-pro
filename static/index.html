@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A股多因子智能选股平台</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.4.21/vue.global.prod.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/element-plus/2.5.6/index.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/element-plus/2.5.6/theme-chalk/index.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"PingFang SC","Microsoft YaHei",sans-serif;background:#0d1117;color:#e6edf3;font-size:14px;height:100vh;overflow:hidden}
+#app{height:100vh;display:flex;flex-direction:column}
+/* header */
+.header{height:56px;background:#161b22;border-bottom:1px solid #30363d;display:flex;align-items:center;padding:0 20px;gap:16px;flex-shrink:0}
+.header .logo{font-size:18px;font-weight:700;color:#58a6ff;letter-spacing:1px}
+.header .nav{display:flex;gap:4px;flex:1}
+.header .nav-item{padding:8px 16px;border-radius:6px;cursor:pointer;color:#8b949e;font-size:14px;transition:all .2s}
+.header .nav-item:hover{background:#21262d;color:#e6edf3}
+.header .nav-item.active{background:#1f6feb26;color:#58a6ff}
+.header .user-info{display:flex;align-items:center;gap:8px;color:#8b949e;font-size:13px}
+.header .user-info .el-avatar{width:32px;height:32px}
+/* main */
+.main{flex:1;display:flex;overflow:hidden}
+/* left sidebar */
+.left-sidebar{width:260px;background:#161b22;border-right:1px solid #30363d;display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0}
+.sidebar-section{padding:16px;border-bottom:1px solid #21262d}
+.sidebar-section:last-child{border-bottom:none}
+.sidebar-title{font-size:12px;color:#8b949e;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.sidebar-title::before{content:"";width:3px;height:12px;background:#58a6ff;border-radius:2px}
+/* middle column */
+.middle-column{width:320px;background:#161b22;border-right:1px solid #30363d;display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0}
+/* right content */
+.right-content{flex:1;display:flex;flex-direction:column;overflow:hidden}
+/* tabs bar */
+.tabs-bar{height:44px;background:#161b22;border-bottom:1px solid #30363d;display:flex;align-items:center;padding:0 16px;gap:4px;flex-shrink:0}
+.tab-btn{padding:6px 14px;border-radius:6px;cursor:pointer;color:#8b949e;font-size:13px;transition:all .2s;border:none;background:none}
+.tab-btn:hover{background:#21262d;color:#e6edf3}
+.tab-btn.active{background:#1f6feb26;color:#58a6ff}
+.tab-btn .badge{padding:1px 6px;border-radius:10px;font-size:11px;margin-left:4px}
+.tab-btn .badge.green{background:#238636;color:#fff}
+.tab-btn .badge.yellow{background:#9e6a03;color:#fff}
+/* content area */
+.content-area{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.content-split{display:flex;flex:1;overflow:hidden}
+/* results panel */
+.results-panel{flex:1;display:flex;flex-direction:column;overflow:hidden;border-right:1px solid #30363d}
+.panel-header{height:40px;background:#161b22;border-bottom:1px solid #30363d;display:flex;align-items:center;justify-content:space-between;padding:0 12px;flex-shrink:0}
+.panel-header .panel-title{font-size:13px;color:#8b949e}
+.panel-header .panel-actions{display:flex;gap:8px}
+.results-table-wrap{flex:1;overflow:auto}
+.results-table{width:100%;border-collapse:collapse;font-size:13px}
+.results-table th{position:sticky;top:0;background:#161b22;padding:10px 8px;text-align:left;color:#8b949e;font-weight:500;font-size:12px;white-space:nowrap;border-bottom:1px solid #30363d;z-index:1}
+.results-table td{padding:8px;border-bottom:1px solid #21262d;color:#e6edf3;white-space:nowrap}
+.results-table tr:hover{background:#1f2428}
+.results-table tr:hover td{background:#1f2428}
+.score-badge{padding:2px 8px;border-radius:12px;font-weight:700;font-size:13px}
+.score-high{background:#23863633;color:#3fb950}
+.score-mid{background:#9e6a0333;color:#d29922}
+.score-low{background:#da363333;color:#f85149}
+.up{color:#f85149}
+.down{color:#3fb950}
+.flat{color:#8b949e}
+.tag{font-size:11px;padding:1px 6px;border-radius:4px}
+.tag-risk{background:#da363333;color:#f85149}
+.tag-warn{background:#9e6a0333;color:#d29922}
+.tag-ok{background:#23863633;color:#3fb950}
+/* charts panel */
+.charts-panel{width:340px;display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0}
+.chart-card{padding:12px;border-bottom:1px solid #21262d}
+.chart-title{font-size:12px;color:#8b949e;margin-bottom:8px}
+.chart-wrap{height:180px}
+/* control panel */
+.control-panel{padding:12px;border-bottom:1px solid #21262d;display:flex;flex-direction:column;gap:10px;max-height:280px;overflow:hidden;flex-shrink:0}
+.control-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.control-label{font-size:12px;color:#8b949e;width:60px;flex-shrink:0}
+.weight-sum{padding:6px 10px;background:#21262d;border-radius:6px;font-size:12px;color:#58a6ff;text-align:center}
+.weight-sum span{font-size:16px;font-weight:700}
+/* execute button */
+.execute-btn{width:100%;padding:12px;border-radius:8px;border:none;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;margin-bottom:8px}
+.execute-btn.idle{background:linear-gradient(135deg,#1f6feb,#1158c7);color:#fff}
+.execute-btn.idle:hover{background:linear-gradient(135deg,#388bfd,#1f6feb)}
+.execute-btn.running{background:#9e6a03;color:#fff;cursor:not-allowed}
+.execute-btn.running:hover{background:#9e6a03}
+/* progress */
+.progress-section{padding:12px;border-bottom:1px solid #21262d}
+.progress-info{display:flex;justify-content:space-between;font-size:12px;color:#8b949e;margin-bottom:6px}
+.progress-bar-wrap{height:6px;background:#21262d;border-radius:3px;overflow:hidden}
+.progress-bar{height:100%;background:linear-gradient(90deg,#1f6feb,#58a6ff);border-radius:3px;transition:width .3s}
+/* log */
+.log-section{padding:12px;min-height:80px;max-height:120px;overflow-y:auto}
+.log-entry{font-size:12px;color:#8b949e;padding:2px 0;font-family:"Consolas","Monaco",monospace}
+.log-entry.success{color:#3fb950}
+.log-entry.error{color:#f85149}
+.log-entry.info{color:#58a6ff}
+.log-entry.warn{color:#d29922}
+.log-time{color:#484f58;margin-right:6px}
+/* factor item */
+.factor-item{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #21262d}
+.factor-item:last-child{border-bottom:none}
+.factor-item .factor-check{display:flex;align-items:center;gap:4px;flex:1;min-width:0}
+.factor-item .factor-name{font-size:13px;color:#e6edf3}
+.factor-item .factor-type{font-size:10px;padding:1px 5px;border-radius:3px}
+.factor-type.tech{background:#1f6feb33;color:#58a6ff}
+.factor-type.money{background:#a371f733;color:#bc8cff}
+.factor-type.basic{background:#3fb95033;color:#3fb950}
+.factor-item .weight-input{width:56px}
+.factor-item .weight-input input{width:100%;padding:3px 6px;background:#21262d;border:1px solid #30363d;border-radius:4px;color:#e6edf3;font-size:12px;text-align:center}
+.factor-item .weight-input input:focus{outline:none;border-color:#58a6ff}
+.factor-item .factor-default{font-size:10px;color:#484f58}
+/* pool item */
+.pool-item{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #21262d;font-size:13px}
+.pool-item:last-child{border-bottom:none}
+.pool-item .pool-name{flex:1;color:#e6edf3}
+.pool-item .pool-count{font-size:11px;color:#8b949e;background:#21262d;padding:1px 6px;border-radius:10px}
+/* filter item */
+.filter-item{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #21262d}
+.filter-item:last-child{border-bottom:none}
+.filter-item .filter-label{font-size:13px;color:#e6edf3}
+.filter-item .filter-control{display:flex;align-items:center;gap:6px}
+.filter-item input[type="text"],.filter-item input[type="number"]{width:70px;padding:3px 6px;background:#21262d;border:1px solid #30363d;border-radius:4px;color:#e6edf3;font-size:12px;text-align:center}
+.filter-item input:focus{outline:none;border-color:#58a6ff}
+/* preset buttons */
+.preset-btns{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.preset-btn{padding:4px 10px;border-radius:4px;border:1px solid #30363d;background:#21262d;color:#8b949e;font-size:12px;cursor:pointer;transition:all .2s}
+.preset-btn:hover,.preset-btn.active{border-color:#58a6ff;color:#58a6ff;background:#1f6feb18}
+/* status bar */
+.status-bar{height:28px;background:#161b22;border-top:1px solid #30363d;display:flex;align-items:center;padding:0 16px;gap:20px;font-size:11px;color:#484f58;flex-shrink:0}
+.status-item{display:flex;align-items:center;gap:4px}
+.status-dot{width:6px;height:6px;border-radius:50%}
+.status-dot.green{background:#3fb950}
+.status-dot.yellow{background:#d29922}
+.status-dot.red{background:#f85149}
+/* scrollbar */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:#0d1117}
+::-webkit-scrollbar-thumb{background:#30363d;border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:#484f58}
+/* modal */
+.modal-overlay{position:fixed;inset:0;background:#0008;display:flex;align-items:center;justify-content:center;z-index:1000}
+.modal-box{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:24px;min-width:480px;max-width:640px;max-height:80vh;overflow-y:auto}
+.modal-title{font-size:16px;font-weight:700;color:#e6edf3;margin-bottom:16px}
+.modal-row{display:flex;gap:8px;margin-bottom:12px}
+.modal-label{width:80px;font-size:13px;color:#8b949e;padding-top:4px}
+.modal-input{flex:1}
+.modal-input input,.modal-input select{width:100%;padding:6px 10px;background:#21262d;border:1px solid #30363d;border-radius:6px;color:#e6edf3;font-size:13px}
+.modal-input input:focus,.modal-input select:focus{outline:none;border-color:#58a6ff}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+.btn-primary{padding:8px 20px;background:#1f6feb;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer}
+.btn-primary:hover{background:#388bfd}
+.btn-default{padding:8px 20px;background:#21262d;color:#8b949e;border:1px solid #30363d;border-radius:6px;font-size:13px;cursor:pointer}
+.btn-default:hover{background:#30363d;color:#e6edf3}
+/* radar chart modal */
+.radar-modal{position:fixed;inset:0;background:#0008;display:flex;align-items:center;justify-content:center;z-index:1000}
+.radar-box{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:24px;width:500px}
+.radar-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.radar-title{font-size:15px;font-weight:700;color:#e6edf3}
+.radar-close{background:none;border:none;color:#8b949e;font-size:18px;cursor:pointer}
+.radar-wrap{height:340px}
+/* top nav pages */
+.page{display:none;height:100%;min-height:0;flex-direction:column;overflow:hidden}
+.page.active{display:flex;min-height:100%;min-height:0}
+/* schedule page */
+.schedule-page{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0}
+.schedule-header{padding:16px 20px;border-bottom:1px solid #30363d;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+.schedule-table{flex:1;overflow:auto;padding:0 20px;min-height:0}
+.schedule-table table{width:100%;border-collapse:collapse}
+.schedule-table th{padding:10px 12px;text-align:left;color:#8b949e;font-weight:500;font-size:12px;border-bottom:1px solid #30363d;background:#161b22;position:sticky;top:0}
+.schedule-table td{padding:10px 12px;border-bottom:1px solid #21262d;font-size:13px;color:#e6edf3}
+/* history page */
+.history-page{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0}
+.history-header{padding:16px 20px;border-bottom:1px solid #30363d;display:flex;gap:12px;align-items:center;flex-shrink:0}
+.history-list{flex:1;overflow:auto;padding:0 20px;min-height:0}
+/* datasource page */
+.datasource-page{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0}
+.datasource-header{padding:16px 20px;border-bottom:1px solid #30363d;flex-shrink:0}
+.datasource-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;padding:16px 20px;overflow-y:auto;min-height:0}
+.ds-card{background:#21262d;border:1px solid #30363d;border-radius:8px;padding:16px}
+.ds-card .ds-name{font-size:14px;font-weight:600;color:#e6edf3;margin-bottom:8px}
+.ds-card .ds-type{font-size:12px;color:#8b949e;margin-bottom:4px}
+.ds-card .ds-status{display:flex;align-items:center;gap:6px;font-size:12px;margin-bottom:8px}
+.ds-card .ds-rate{font-size:11px;color:#8b949e}
+.ds-bar{height:4px;background:#30363d;border-radius:2px;margin-top:6px;overflow:hidden}
+.ds-bar-fill{height:100%;background:#3fb950;border-radius:2px;transition:width .3s}
+/* personal center */
+.personal-page{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0}
+.personal-header{padding:20px;border-bottom:1px solid #30363d;display:flex;gap:20px;align-items:center;flex-shrink:0}
+.personal-avatar{width:64px;height:64px;border-radius:50%;background:#1f6feb;display:flex;align-items:center;justify-content:center;font-size:24px;color:#fff;font-weight:700}
+.personal-info .personal-name{font-size:18px;font-weight:700;color:#e6edf3}
+.personal-info .personal-role{font-size:13px;color:#8b949e;margin-top:4px}
+.personal-info .personal-role span{padding:2px 8px;border-radius:10px;font-size:11px;background:#23863633;color:#3fb950}
+.personal-content{flex:1;overflow-y:auto;padding:20px;min-height:0}
+.personal-section{margin-bottom:24px}
+.personal-section-title{font-size:13px;color:#8b949e;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
+/* quick stats */
+.quick-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;min-height:0}
+.quick-stats > *{min-height:0}
+.stat-card{background:#21262d;border:1px solid #30363d;border-radius:8px;padding:16px;text-align:center}
+.stat-card .stat-num{font-size:28px;font-weight:700;color:#58a6ff}
+.stat-card .stat-label{font-size:12px;color:#8b949e;margin-top:4px}
+</style>
+<style>
+/* Auth Overlay */
+.auth-overlay{position:fixed;inset:0;background:#0d1117;display:flex;align-items:center;justify-content:center;z-index:9999}
+.auth-box{background:#161b22;border:1px solid #30363d;border-radius:16px;padding:40px;width:400px;max-width:95vw}
+.auth-logo{text-align:center;font-size:28px;font-weight:700;color:#58a6ff;margin-bottom:8px}
+.auth-subtitle{text-align:center;color:#8b949e;font-size:13px;margin-bottom:32px}
+.auth-tabs{display:flex;gap:0;margin-bottom:24px;background:#21262d;border-radius:8px;padding:4px}
+.auth-tab{flex:1;text-align:center;padding:8px;border-radius:6px;cursor:pointer;font-size:14px;color:#8b949e;transition:all .2s;border:none;background:none}
+.auth-tab.active{background:#1f6feb;color:#fff;font-weight:600}
+.auth-field{margin-bottom:16px}
+.auth-field label{display:block;font-size:12px;color:#8b949e;margin-bottom:6px}
+.auth-field input{width:100%;padding:10px 12px;background:#21262d;border:1px solid #30363d;border-radius:8px;color:#e6edf3;font-size:14px}
+.auth-field input:focus{outline:none;border-color:#58a6ff}
+.auth-field input::placeholder{color:#484f58}
+.auth-btn{width:100%;padding:12px;background:linear-gradient(135deg,#1f6feb,#1158c7);color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;transition:opacity .2s}
+.auth-btn:hover{opacity:0.9}
+.auth-btn:disabled{opacity:0.5;cursor:not-allowed}
+.auth-error{background:#da363322;border:1px solid #da363344;border-radius:6px;padding:10px;font-size:13px;color:#f85149;margin-bottom:16px;text-align:center}
+.auth-footer{text-align:center;margin-top:16px;font-size:12px;color:#484f58}
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- Auth Overlay -->
+  <div class="auth-overlay" v-if="!auth.user">
+    <div class="auth-box">
+      <div class="auth-logo">📈 A股多因子选股</div>
+      <div class="auth-subtitle">多因子智能选股平台 · 登录后可使用全部功能</div>
+      <div class="auth-tabs">
+        <button class="auth-tab" :class="{active:auth.tab==='login'}" @click="auth.tab='login'">登录</button>
+        <button class="auth-tab" :class="{active:auth.tab==='register'}" @click="auth.tab='register'">注册</button>
+      </div>
+      <div v-if="auth.error" class="auth-error">{{auth.error}}</div>
+      <div class="auth-field">
+        <label>用户名</label>
+        <input type="text" v-model="auth.username" placeholder="请输入用户名" @keyup.enter="auth.tab==='login'?doLogin():doRegister()">
+      </div>
+      <div class="auth-field" v-if="auth.tab==='register'">
+        <label>邮箱</label>
+        <input type="email" v-model="auth.email" placeholder="请输入邮箱" @keyup.enter="doRegister()">
+      </div>
+      <div class="auth-field">
+        <label>密码</label>
+        <input type="password" v-model="auth.password" placeholder="请输入密码" @keyup.enter="auth.tab==='login'?doLogin():doRegister()">
+      </div>
+      <button class="auth-btn" :disabled="auth.loading" @click="auth.tab==='login'?doLogin():doRegister()">
+        {{auth.loading ? '处理中...' : (auth.tab==='login'?'登 录':'立即注册')}}
+      </button>
+      <div class="auth-footer">
+        <span v-if="auth.tab==='login'">还没有账号？<a href="#" @click.prevent="auth.tab='register'" style="color:#58a6ff">立即注册</a></span>
+        <span v-else>已有账号？<a href="#" @click.prevent="auth.tab='login'" style="color:#58a6ff">立即登录</a></span>
+      </div>
+    </div>
+  </div>
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">📈 A股多因子选股</div>
+    <div class="nav">
+      <div class="nav-item active">选股工作台</div>
+      <div class="nav-item" onclick="location.href='schedule.html'">定时任务</div>
+      <div class="nav-item" onclick="location.href='history.html'">历史结果</div>
+      <div class="nav-item" onclick="location.href='datasource.html'">数据源监控</div>
+      <div class="nav-item" onclick="location.href='personal.html'">个人中心</div>
+    </div>
+    <div class="user-info">
+      <el-avatar size="small" style="background:#1f6feb;cursor:pointer" @click="activePage='personal'">{{ auth.user?.username?.slice(0,1) || '游' }}</el-avatar>
+      <span style="cursor:pointer" @click="activePage='personal'">{{ auth.user?.username || '游客' }}</span>
+      <span v-if="auth.user?.is_vip" style="padding:2px 8px;background:#23863633;color:#3fb950;border-radius:10px;font-size:11px">VIP</span>
+      <span v-else-if="auth.user" style="padding:2px 8px;background:#30363d33;color:#8b949e;border-radius:10px;font-size:11px">普通</span>
+      <button v-if="auth.user" @click="doLogout" style="background:none;border:none;color:#8b949e;cursor:pointer;font-size:12px;padding:2px 6px;border-radius:4px;margin-left:4px" title="退出登录">退出</button>
+    </div>
+  </div>
+
+  <!-- Workbench Page -->
+  <div class="page" :class="{active:activePage==='workbench'}">
+    <div class="main">
+      <!-- Left: Factor Config -->
+      <div class="left-sidebar">
+        <div class="sidebar-section">
+          <div class="sidebar-title">因子配置</div>
+          <div v-for="f in factors" :key="f.name" class="factor-item">
+            <div class="factor-check">
+              <el-checkbox v-model="f.enabled" @change="updateWeightSum"></el-checkbox>
+              <span class="factor-name">{{f.name}}</span>
+              <span class="factor-type" :class="f.typeClass">{{f.type}}</span>
+            </div>
+            <div class="weight-input">
+              <input type="number" v-model.number="f.weight" min="0" max="3" step="0.1" @input="updateWeightSum" :disabled="!f.enabled">
+            </div>
+            <span class="factor-default">默认{{f.defaultW}}</span>
+          </div>
+          <div style="margin-top:12px;padding:8px;background:#21262d;border-radius:6px">
+            <div style="font-size:11px;color:#8b949e;margin-bottom:4px">权重总和</div>
+            <div style="font-size:20px;font-weight:700" :style="{color:weightSum>=5&&weightSum<=10?'#3fb950':'#f85149'}">{{weightSum.toFixed(1)}}</div>
+            <div style="font-size:11px;color:#8b949e;margin-top:2px">建议范围 5~10</div>
+          </div>
+          <div class="preset-btns">
+            <span class="preset-btn" :class="{active:preset==='稳健'}" @click="applyPreset('稳健')">稳健型</span>
+            <span class="preset-btn" :class="{active:preset==='激进'}" @click="applyPreset('激进')">激进型</span>
+            <span class="preset-btn" :class="{active:preset==='价值'}" @click="applyPreset('价值')">价值型</span>
+            <span class="preset-btn" :class="{active:preset==='自定义'}" @click="preset='自定义'">自定义</span>
+          </div>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-title">预设方案</div>
+          <div style="font-size:12px;color:#8b949e;line-height:1.8">
+            <div>💼 稳健型：均衡配置，权重总和8</div>
+            <div>🚀 激进型：动量+趋势为主，总和10</div>
+            <div>💰 价值型：基本面权重高，总和8</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Middle: Stock Pool + Filters -->
+      <div class="middle-column">
+        <div class="sidebar-section" style="flex:1;overflow-y:auto">
+          <div class="sidebar-title">股票池选择</div>
+          <div style="font-size:12px;color:#8b949e;margin-bottom:8px">已选 <span style="color:#58a6ff">{{selectedPools.length}}</span> 个，约 <span style="color:#58a6ff">{{poolStockCount}}</span> 只</div>
+          <div v-for="p in pools" :key="p.name" class="pool-item">
+            <el-checkbox v-model="p.selected" @change="updatePoolCount"></el-checkbox>
+            <span class="pool-name">{{p.name}}</span>
+            <span class="pool-count">{{p.count}}</span>
+          </div>
+
+          <div style="margin-top:16px" class="sidebar-title">附加过滤</div>
+          <div class="filter-item">
+            <span class="filter-label">排除ST股</span>
+            <el-switch v-model="filters.noST" size="small"></el-switch>
+          </div>
+          <div class="filter-item">
+            <span class="filter-label">排除次新股</span>
+            <el-switch v-model="filters.noNew" size="small"></el-switch>
+          </div>
+          <div class="filter-item">
+            <span class="filter-label">成交额过滤</span>
+            <div class="filter-control">
+              <input type="number" v-model.number="filters.minAmount" placeholder="万"> <span style="color:#8b949e;font-size:11px">万+</span>
+            </div>
+          </div>
+          <div class="filter-item">
+            <span class="filter-label">排除停牌</span>
+            <el-switch v-model="filters.noSuspend" size="small"></el-switch>
+          </div>
+
+          <div style="margin-top:16px" class="sidebar-title">硬性过滤</div>
+          <div class="filter-item">
+            <span class="filter-label">今日涨跌幅</span>
+            <div class="filter-control">
+              <input type="number" v-model.number="hardFilter.todayReturn" step="0.1" style="width:50px">
+              <span style="color:#8b949e;font-size:11px">%</span>
+            </div>
+          </div>
+          <div class="filter-item">
+            <span class="filter-label">近2日涨幅</span>
+            <div class="filter-control">
+              <input type="number" v-model.number="hardFilter.recentReturn" step="0.1" style="width:50px">
+              <span style="color:#8b949e;font-size:11px">%</span>
+            </div>
+          </div>
+          <div class="filter-item">
+            <span class="filter-label">站上5日线</span>
+            <el-switch v-model="hardFilter.aboveMA5" size="small"></el-switch>
+          </div>
+          <div class="filter-item">
+            <span class="filter-label">业绩否决线</span>
+            <div class="filter-control">
+              <input type="number" v-model.number="hardFilter.profitThreshold" step="1" style="width:50px">
+              <span style="color:#8b949e;font-size:11px">%</span>
+            </div>
+          </div>
+          <div class="filter-item">
+            <span class="filter-label">解禁否决线</span>
+            <div class="filter-control">
+              <input type="number" v-model.number="hardFilter.jiejinThreshold" step="0.5" style="width:50px">
+              <span style="color:#8b949e;font-size:11px">%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Control + Results -->
+      <div class="right-content">
+        <!-- Tabs -->
+        <div class="tabs-bar">
+          <button class="tab-btn" :class="{active:resultTab==='core'}" @click="resultTab='core'">
+            核心池 <span class="badge green">{{coreStocks.length}}</span>
+          </button>
+          <button class="tab-btn" :class="{active:resultTab==='watch'}" @click="resultTab='watch'">
+            观察池 <span class="badge yellow">{{watchStocks.length}}</span>
+          </button>
+          <button class="tab-btn" :class="{active:resultTab==='all'}" @click="resultTab='all'">
+            完整数据
+          </button>
+          <div style="flex:1"></div>
+          <button class="tab-btn" @click="showDownloadModal=true" style="font-size:12px">📥 下载结果</button>
+        </div>
+
+        <!-- Content split: table + charts -->
+        <div class="content-split">
+          <!-- Results Table -->
+          <div class="results-panel">
+            <!-- Control + Log -->
+            <div class="control-panel">
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <span style="font-size:12px;color:#8b949e">执行模式</span>
+                <el-radio-group v-model="execMode" size="small">
+                  <el-radio-button label="盘后">盘后模式</el-radio-button>
+                  <el-radio-button label="盘中">盘中模式</el-radio-button>
+                </el-radio-group>
+                <div style="flex:1"></div>
+                <button class="execute-btn" :class="isRunning?'running':'idle'" @click="runTask" :disabled="isRunning">
+                  {{isRunning ? '⏳ 选股中... ('+progressPct+'%)' : '▶ 开始选股'}}
+                </button>
+              </div>
+              <div class="progress-section" v-if="isRunning || progressPct>0" style="padding:0;border:none">
+                <div class="progress-info">
+                  <span>数据获取</span>
+                  <span>{{progressPct}}%</span>
+                </div>
+                <div class="progress-bar-wrap">
+                  <div class="progress-bar" :style="{width:progressPct+'%'}"></div>
+                </div>
+              </div>
+              <div class="log-section" v-if="logs.length">
+                <div v-for="(log,i) in logs" :key="i" class="log-entry" :class="log.type">
+                  <span class="log-time">{{log.time}}</span>{{log.msg}}
+                </div>
+              </div>
+            </div>
+
+            <!-- Table -->
+            <div class="results-table-wrap">
+              <table class="results-table">
+                <thead>
+                  <tr>
+                    <th>代码</th><th>名称</th><th>板块</th><th>综合得分</th>
+                    <th>最新价</th><th>今日涨跌</th><th>20日涨幅</th>
+                    <th>超额收益</th><th>PE分位</th><th>业绩增速</th>
+                    <th>MACD</th><th>二次确认</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="s in displayStocks" :key="s.code" @click="showRadar(s)" style="cursor:pointer">
+                    <td><code style="color:#58a6ff">{{s.code}}</code></td>
+                    <td>{{s.name}}</td>
+                    <td style="color:#8b949e;font-size:11px">{{s.board}}</td>
+                    <td><span class="score-badge" :class="getScoreClass(s.score)">{{s.score.toFixed(2)}}</span></td>
+                    <td>{{s.price}}</td>
+                    <td :class="s.changePct>=0?'up':'down'">{{s.changePct>=0?'+':''}}{{s.changePct.toFixed(2)}}%</td>
+                    <td :class="s.ret20>=0?'up':'down'">{{s.ret20>=0?'+':''}}{{s.ret20.toFixed(2)}}%</td>
+                    <td :class="s.excess>=0?'up':'down'">{{s.excess>=0?'+':''}}{{s.excess.toFixed(2)}}%</td>
+                    <td>{{s.peRank}}%</td>
+                    <td :class="s.profitGrowth>=0?'up':'down'">{{s.profitGrowth>=0?'+':''}}{{s.profitGrowth.toFixed(1)}}%</td>
+                    <td>
+                      <span class="tag" :class="s.macd==='正常'?'tag-ok':'tag-warn'">{{s.macd}}</span>
+                    </td>
+                    <td>
+                      <span class="tag" :class="s.confirm==='通过'?'tag-ok':'tag-risk'">{{s.confirm}}</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Charts -->
+          <div class="charts-panel">
+            <div class="chart-card">
+              <div class="chart-title">得分分布</div>
+              <div class="chart-wrap" id="histogramChart"></div>
+            </div>
+            <div class="chart-card">
+              <div class="chart-title">板块分布（核心池）</div>
+              <div class="chart-wrap" id="pieChart"></div>
+            </div>
+            <div class="chart-card">
+              <div class="chart-title">TOP10 得分对比</div>
+              <div class="chart-wrap" id="barChart"></div>
+            </div>
+            <div class="chart-card" style="border-bottom:none">
+              <div class="chart-title">执行日志</div>
+              <div style="font-size:11px;color:#8b949e;line-height:1.8;max-height:200px;overflow-y:auto">
+                <div v-for="(log,i) in logs.slice(-8)" :key="i" class="log-entry" :class="log.type">
+                  <span class="log-time">{{log.time}}</span>{{log.msg}}
+                </div>
+                <div v-if="!logs.length" style="color:#484f58;text-align:center;padding:20px">暂无日志</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Schedule Page -->
+  <div class="page schedule-page" :class="{active:activePage==='schedule'}">
+    <div class="schedule-header">
+      <div style="font-size:16px;font-weight:700">定时任务管理</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-primary" @click="showScheduleModal=true">+ 新建任务</button>
+      </div>
+    </div>
+    <div class="schedule-table">
+      <table>
+        <thead>
+          <tr><th>任务名称</th><th>执行频率</th><th>执行时间</th><th>模式</th><th>状态</th><th>最近执行</th><th>操作</th></tr>
+        </thead>
+        <tbody>
+          <tr v-for="t in schedules" :key="t.id">
+            <td>{{t.name}}</td>
+            <td>{{t.freq}}</td>
+            <td>{{t.time}}</td>
+            <td><span class="tag" :class="t.mode==='盘后'?'tag-ok':'tag-warn'">{{t.mode}}</span></td>
+            <td>
+              <span style="display:flex;align-items:center;gap:4px;font-size:12px">
+                <span class="status-dot" :class="t.enabled?'green':'red'"></span>
+                {{t.enabled?'运行中':'已暂停'}}
+              </span>
+            </td>
+            <td style="color:#8b949e;font-size:12px">{{t.lastRun||'从未'}}</td>
+            <td>
+              <el-button size="small" @click="runScheduleNow(t)">立即执行</el-button>
+              <el-button size="small" @click="toggleSchedule(t)">{{t.enabled?'暂停':'启用'}}</el-button>
+              <el-button size="small" type="danger" @click="deleteSchedule(t.id)">删除</el-button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- History Page -->
+  <div class="page history-page" :class="{active:activePage==='history'}">
+    <div class="history-header">
+      <div style="font-size:16px;font-weight:700">历史结果</div>
+      <el-input v-model="historySearch" placeholder="搜索任务名称" style="width:200px" prefix-icon="Search" clearable></el-input>
+      <el-date-picker v-model="historyDate" type="date" placeholder="按日期筛选" style="width:150px" clearable></el-date-picker>
+    </div>
+    <div class="history-list">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;padding:16px 20px">
+        <div v-for="h in filteredHistory" :key="h.id" style="background:#21262d;border:1px solid #30363d;border-radius:8px;padding:16px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+            <div style="font-weight:600">{{h.name}}</div>
+            <span class="tag" :class="h.status==='成功'?'tag-ok':'tag-risk'">{{h.status}}</span>
+          </div>
+          <div style="font-size:12px;color:#8b949e;line-height:1.8">
+            <div>📅 {{h.date}} {{h.time}}</div>
+            <div>📊 核心池 {{h.coreCount}} 只 | 观察池 {{h.watchCount}} 只</div>
+            <div>⏱ 耗时 {{h.duration}}</div>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:10px">
+            <button class="btn-default" style="flex:1;padding:5px;font-size:12px" @click="viewHistory(h)">查看</button>
+            <button class="btn-primary" style="flex:1;padding:5px;font-size:12px" @click="downloadHistory(h)">下载</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Datasource Page -->
+  <div class="page datasource-page" :class="{active:activePage==='datasource'}">
+    <div class="datasource-header">
+      <div style="font-size:16px;font-weight:700;margin-bottom:8px">数据源状态监控</div>
+      <div style="font-size:12px;color:#8b949e">实时监控各数据源的可用性和调用成功率</div>
+    </div>
+    <div class="datasource-grid">
+      <div v-for="ds in datasources" :key="ds.name" class="ds-card">
+        <div class="ds-name">{{ds.name}}</div>
+        <div class="ds-type">{{ds.type}} · {{ds.usage}}</div>
+        <div class="ds-status">
+          <span class="status-dot" :class="ds.status==='可用'?'green':ds.status==='熔断'?'yellow':'red'"></span>
+          <span :style="{color:ds.status==='可用'?'#3fb950':ds.status==='熔断'?'#d29922':'#f85149'}">{{ds.status}}</span>
+        </div>
+        <div class="ds-rate">调用成功率 {{ds.rate}}%</div>
+        <div class="ds-bar"><div class="ds-bar-fill" :style="{width:ds.rate+'%',background:ds.rate>90?'#3fb950':ds.rate>70?'#d29922':'#f85149'}"></div></div>
+        <div style="font-size:11px;color:#484f58;margin-top:4px">今日调用 {{ds.calls}} 次 | 最后更新 {{ds.lastUpdate}}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Personal Center -->
+  <div class="page personal-page" :class="{active:activePage==='personal'}">
+    <div class="personal-header">
+      <div class="personal-avatar">投</div>
+      <div class="personal-info">
+        <div class="personal-name">量化研究者</div>
+        <div class="personal-role"><span>VIP用户</span> · 注册于 2025-01-15</div>
+      </div>
+      <div style="flex:1"></div>
+      <button class="btn-default">编辑资料</button>
+    </div>
+    <div class="personal-content">
+      <div class="quick-stats">
+        <div class="stat-card"><div class="stat-num">12</div><div class="stat-label">我的因子方案</div></div>
+        <div class="stat-card"><div class="stat-num">5</div><div class="stat-label">定时任务</div></div>
+        <div class="stat-card"><div class="stat-num">87</div><div class="stat-label">历史结果</div></div>
+        <div class="stat-card"><div class="stat-num">3</div><div class="stat-label">VIP剩余天数</div></div>
+      </div>
+      <div class="personal-section">
+        <div class="personal-section-title">我的因子方案</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px">
+          <div v-for="s in mySchemes" :key="s.name" style="background:#21262d;border:1px solid #30363d;border-radius:6px;padding:12px">
+            <div style="font-weight:600;margin-bottom:4px">{{s.name}}</div>
+            <div style="font-size:12px;color:#8b949e">总和 {{s.totalWeight}} · {{s.count}}个因子</div>
+            <div style="font-size:11px;color:#484f58;margin-top:4px">保存于 {{s.date}}</div>
+          </div>
+        </div>
+      </div>
+      <div class="personal-section">
+        <div class="personal-section-title">账户信息</div>
+        <div style="background:#21262d;border:1px solid #30363d;border-radius:6px;padding:16px;max-width:400px">
+          <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #30363d">
+            <span style="color:#8b949e">用户名</span><span>量化研究者</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #30363d">
+            <span style="color:#8b949e">会员类型</span><span style="color:#3fb950">VIP</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #30363d">
+            <span style="color:#8b949e">到期时间</span><span>2026-12-31</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:6px 0">
+            <span style="color:#8b949e">数据源配额</span><span>已用 3/10</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Download Modal -->
+  <div class="modal-overlay" v-if="showDownloadModal" @click.self="showDownloadModal=false">
+    <div class="modal-box">
+      <div class="modal-title">📥 下载选股结果</div>
+      <div style="margin-bottom:12px">
+        <div style="font-size:13px;color:#8b949e;margin-bottom:6px">下载内容</div>
+        <el-checkbox-group v-model="downloadContent">
+          <el-checkbox label="core">核心池</el-checkbox>
+          <el-checkbox label="watch">观察池</el-checkbox>
+          <el-checkbox label="all">完整数据</el-checkbox>
+        </el-checkbox-group>
+      </div>
+      <div style="margin-bottom:12px">
+        <div style="font-size:13px;color:#8b949e;margin-bottom:6px">文件格式</div>
+        <el-radio-group v-model="downloadFormat">
+          <el-radio label="xlsx">Excel (.xlsx)</el-radio>
+          <el-radio label="csv">CSV (.csv)</el-radio>
+          <el-radio label="pdf">PDF 报告</el-radio>
+        </el-radio-group>
+      </div>
+      <div style="margin-bottom:12px">
+        <div style="font-size:13px;color:#8b949e;margin-bottom:6px">包含内容</div>
+        <el-checkbox-group v-model="downloadIncludes">
+          <el-checkbox label="raw">原始数据</el-checkbox>
+          <el-checkbox label="factor">因子明细</el-checkbox>
+          <el-checkbox label="confirm">二次确认</el-checkbox>
+        </el-checkbox-group>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-default" @click="showDownloadModal=false">取消</button>
+        <button class="btn-primary" @click="doDownload">确认下载</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Schedule Modal -->
+  <div class="modal-overlay" v-if="showScheduleModal" @click.self="showScheduleModal=false">
+    <div class="modal-box">
+      <div class="modal-title">新建定时任务</div>
+      <div class="modal-row">
+        <div class="modal-label">任务名称</div>
+        <div class="modal-input"><input type="text" v-model="newSchedule.name" placeholder="每日盘后选股"></div>
+      </div>
+      <div class="modal-row">
+        <div class="modal-label">执行频率</div>
+        <div class="modal-input">
+          <select v-model="newSchedule.freq">
+            <option value="每天">每天</option>
+            <option value="每周">每周</option>
+            <option value="自定义">自定义</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-row">
+        <div class="modal-label">执行时间</div>
+        <div class="modal-input"><input type="time" v-model="newSchedule.time" value="15:30"></div>
+      </div>
+      <div class="modal-row">
+        <div class="modal-label">执行模式</div>
+        <div class="modal-input">
+          <select v-model="newSchedule.mode">
+            <option value="盘后">盘后模式</option>
+            <option value="盘中">盘中模式</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-row" v-if="newSchedule.mode==='盘中'">
+        <div class="modal-label">循环间隔</div>
+        <div class="modal-input" style="display:flex;align-items:center;gap:6px">
+          <input type="number" v-model.number="newSchedule.interval" min="5" max="240" step="5" style="width:80px" placeholder="30">
+          <span style="font-size:12px;color:#8b949e">分钟（5~240）盘中持续循环执行</span>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-default" @click="showScheduleModal=false">取消</button>
+        <button class="btn-primary" @click="createSchedule">创建</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Radar Modal -->
+  <div class="radar-modal" v-if="radarStock" @click.self="radarStock=null">
+    <div class="radar-box">
+      <div class="radar-header">
+        <div class="radar-title">{{radarStock.name}} ({{radarStock.code}}) 因子雷达图</div>
+        <button class="radar-close" @click="radarStock=null">×</button>
+      </div>
+      <div class="radar-wrap" id="radarChart"></div>
+    </div>
+  </div>
+
+  <!-- Status Bar -->
+  <div class="status-bar">
+    <div class="status-item"><span class="status-dot green"></span>东方财富 ✓</div>
+    <div class="status-item"><span class="status-dot green"></span>腾讯财经 ✓</div>
+    <div class="status-item"><span class="status-dot yellow"></span>baostock 熔断中</div>
+    <div class="status-item"><span class="status-dot green"></span>新浪财经 ✓</div>
+    <div style="flex:1"></div>
+    <div class="status-item">版本 Web V1.0</div>
+    <div class="status-item">aaas-pro.cn</div>
+  </div>
+</div>
+
+<script>
+const { createApp, ref, computed, onMounted, nextTick } = Vue;
+
+createApp({
+  setup() {
+    // ========== Auth ==========
+    const API = window.location.origin;
+    const auth = ref({
+      user: null,
+      token: localStorage.getItem('token') || null,
+      tab: 'login',
+      loading: false,
+      error: null,
+    });
+
+    async function fetchUser() {
+      if (!auth.value.token) return;
+      try {
+        const res = await fetch(API + '/api/auth/me', {
+          headers: { 'Authorization': 'Bearer ' + auth.value.token }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          auth.value.user = data;
+        } else {
+          localStorage.removeItem('token');
+          auth.value.token = null;
+          auth.value.user = null;
+        }
+      } catch { auth.value.user = null; }
+    }
+
+    async function doLogin() {
+      auth.value.error = null;
+      if (!auth.value.username || !auth.value.password) { auth.value.error = '请输入用户名和密码'; return; }
+      auth.value.loading = true;
+      try {
+        const res = await fetch(API + '/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: auth.value.username, password: auth.value.password })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          localStorage.setItem('token', data.access_token);
+          auth.value.token = data.access_token;
+          auth.value.user = data.user;
+          auth.value.username = '';
+          auth.value.password = '';
+          auth.value.error = null;
+          ElMessage.success('登录成功，欢迎 ' + data.user.username + '！');
+        } else {
+          auth.value.error = data.detail || '登录失败';
+        }
+      } catch (e) { auth.value.error = '网络错误，请稍后重试'; }
+      finally { auth.value.loading = false; }
+    }
+
+    async function doRegister() {
+      auth.value.error = null;
+      if (!auth.value.username || !auth.value.email || !auth.value.password) { auth.value.error = '请填写所有字段'; return; }
+      if (auth.value.password.length < 6) { auth.value.error = '密码至少6位'; return; }
+      auth.value.loading = true;
+      try {
+        const res = await fetch(API + '/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: auth.value.username, email: auth.value.email, password: auth.value.password })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          localStorage.setItem('token', data.access_token);
+          auth.value.token = data.access_token;
+          auth.value.user = data.user;
+          auth.value.password = '';
+          auth.value.error = null;
+          ElMessage.success('注册成功，欢迎 ' + data.user.username + '！');
+        } else {
+          auth.value.error = data.detail || '注册失败';
+        }
+      } catch (e) { auth.value.error = '网络错误，请稍后重试'; }
+      finally { auth.value.loading = false; }
+    }
+
+    function doLogout() {
+      localStorage.removeItem('token');
+      auth.value.token = null;
+      auth.value.user = null;
+      auth.value.username = '';
+      auth.value.password = '';
+    }
+
+    fetchUser();
+
+    // ========== App State ==========
+    const activePage = ref('workbench');
+    const resultTab = ref('core');
+    const isRunning = ref(false);
+    const progressPct = ref(0);
+    const logs = ref([]);
+    const preset = ref('稳健');
+    const showDownloadModal = ref(false);
+    const showScheduleModal = ref(false);
+    const radarStock = ref(null);
+    const execMode = ref('盘后');
+    const historySearch = ref('');
+    const historyDate = ref(null);
+
+    const downloadContent = ref(['core']);
+    const downloadFormat = ref('xlsx');
+    const downloadIncludes = ref(['raw', 'factor']);
+
+    const factors = ref([
+      { name:'趋势', type:'技术面', typeClass:'tech', enabled:true, weight:1.5, defaultW:1.5 },
+      { name:'动量', type:'技术面', typeClass:'tech', enabled:true, weight:1.0, defaultW:1.0 },
+      { name:'量价', type:'技术面', typeClass:'tech', enabled:true, weight:1.2, defaultW:1.2 },
+      { name:'位置', type:'技术面', typeClass:'tech', enabled:true, weight:1.0, defaultW:1.0 },
+      { name:'龙虎榜', type:'资金面', typeClass:'money', enabled:true, weight:0.8, defaultW:0.8 },
+      { name:'量比', type:'技术面', typeClass:'tech', enabled:true, weight:0.6, defaultW:0.6 },
+      { name:'相对强弱', type:'技术面', typeClass:'tech', enabled:true, weight:1.5, defaultW:1.5 },
+      { name:'回踩加分', type:'技术面', typeClass:'tech', enabled:true, weight:0.3, defaultW:0.3 },
+      { name:'暗盘资金', type:'资金面', typeClass:'money', enabled:true, weight:0.8, defaultW:0.8 },
+      { name:'北向资金', type:'资金面', typeClass:'money', enabled:true, weight:0.5, defaultW:0.5 },
+      { name:'PE分位', type:'基本面', typeClass:'basic', enabled:true, weight:0.5, defaultW:0.5 },
+      { name:'业绩增速', type:'基本面', typeClass:'basic', enabled:true, weight:0.8, defaultW:0.8 },
+    ]);
+
+    const pools = ref([
+      { name:'全部A股', count:'~5000', selected:false },
+      { name:'沪深300', count:'300', selected:true },
+      { name:'上证指数', count:'~2000', selected:false },
+      { name:'深证指数', count:'~2800', selected:false },
+      { name:'创业板指', count:'~1300', selected:false },
+      { name:'科创板指', count:'~500', selected:false },
+    ]);
+
+    const filters = ref({ noST:true, noNew:true, minAmount:5000, noSuspend:true });
+    const hardFilter = ref({ todayReturn:-0.5, recentReturn:-0.5, aboveMA5:true, profitThreshold:-30, jiejinThreshold:5 });
+    const newSchedule = ref({ name:'', freq:'每天', time:'15:30', mode:'盘后', interval:null });
+
+    const schedules = ref([
+      { id:1, name:'每日盘后选股', freq:'每天', time:'15:30', mode:'盘后', enabled:true, lastRun:'2026-09-27 15:30' },
+      { id:2, name:'早盘选股提醒', freq:'每天', time:'09:25', mode:'盘中', enabled:false, lastRun:'2026-09-26 09:25' },
+      { id:3, name:'周度深度选股', freq:'每周', time:'周五 16:00', mode:'盘后', enabled:true, lastRun:'2026-09-20 16:00' },
+    ]);
+
+    const history = ref([
+      { id:1, name:'每日盘后选股', date:'2026-09-27', time:'15:30', status:'成功', coreCount:42, watchCount:18, duration:'4分32秒' },
+      { id:2, name:'早盘选股提醒', date:'2026-09-27', time:'09:25', status:'成功', coreCount:31, watchCount:22, duration:'3分15秒' },
+      { id:3, name:'周度深度选股', date:'2026-09-20', time:'16:00', status:'成功', coreCount:56, watchCount:28, duration:'8分47秒' },
+    ]);
+
+    const datasources = ref([
+      { name:'东方财富', type:'实时行情/龙虎榜', usage:'★★★★', status:'可用', rate:99.2, calls:12847, lastUpdate:'2秒前' },
+      { name:'腾讯财经', type:'日线数据', usage:'★★★★', status:'可用', rate:98.7, calls:8432, lastUpdate:'5秒前' },
+      { name:'新浪财经', type:'备用日线', usage:'★★★', status:'可用', rate:95.1, calls:3210, lastUpdate:'10秒前' },
+      { name:'baostock', type:'日线/基本面', usage:'★★★', status:'熔断', rate:62.3, calls:2156, lastUpdate:'3分钟前' },
+      { name:'中证指数公司', type:'沪深300成分股', usage:'★★★★★', status:'可用', rate:100, calls:28, lastUpdate:'1小时前' },
+    ]);
+
+    const mySchemes = ref([
+      { name:'我的稳健方案', totalWeight:8.0, count:12, date:'2026-09-25' },
+      { name:'激进动量策略', totalWeight:10.0, count:8, date:'2026-09-20' },
+      { name:'价值投资法', totalWeight:8.2, count:10, date:'2026-09-15' },
+    ]);
+
+    // 股票名称池
+    const stockNames = [
+      '贵州茅台','宁德时代','比亚迪','招商银行','中国平安','中信证券','东方财富','恒瑞医药',
+      '海康威视','美的集团','格力电器','五粮液','隆基绿能','中芯国际','韦尔股份','赣锋锂业',
+      '亿纬锂能','阳光电源','通威股份','天合光能','晶澳科技','TCL中环','恩捷股份','星源材质',
+      '璞泰来','新宙邦','天赐材料','多氟多','永太科技','石大胜华','天际股份','延安必康',
+      '华鲁恒升','万华化学','卫星化学','宝丰能源','龙佰集团','中核钛白','惠云钛业','安纳达',
+      '金浦钛业','攀钢钒钛','安宁股份','西部矿业','紫金矿业','洛阳钼业','江西铜业','云南铜业',
+      '中国铝业','南山铝业','天山铝业','神火股份','焦作万方','中孚实业','宏创控股','云海金属',
+      '北方稀土','盛和资源','五矿稀土','广晟有色','中色股份','厦门钨业','章源钨业','翔鹭钨业',
+    ];
+    const boards = ['上证主板','深证主板','创业板','科创板','上证主板','深证主板','创业板','科创板'];
+
+    // 因子定义（与界面配置同步）
+    const factorDefs = {
+      '趋势':       { tech:1, w:1.5, base:2.1, range:0.8 },
+      '动量':       { tech:1, w:1.0, base:1.8, range:0.9 },
+      '量价':       { tech:1, w:1.2, base:2.0, range:0.7 },
+      '位置':       { tech:1, w:1.0, base:1.9, range:0.6 },
+      '龙虎榜':     { tech:0, w:0.8, base:1.5, range:0.8 },
+      '量比':       { tech:1, w:0.6, base:1.6, range:0.5 },
+      '相对强弱':   { tech:1, w:1.5, base:2.0, range:0.8 },
+      '回踩加分':   { tech:1, w:0.3, base:1.2, range:0.4 },
+      '暗盘资金':   { tech:0, w:0.8, base:1.5, range:0.7 },
+      '北向资金':   { tech:0, w:0.5, base:1.4, range:0.6 },
+      'PE分位':     { tech:0, w:0.5, base:1.8, range:0.5 },
+      '业绩增速':   { tech:0, w:0.8, base:1.6, range:0.8 },
+    };
+    const factorKeys = Object.keys(factorDefs);
+
+    // 模拟单只股票的因子原始值
+    function genFactorValues() {
+      const fvs = {};
+      factorKeys.forEach(k => { fvs[k] = Math.random(); });
+      return fvs;
+    }
+
+    // 将原始因子值(0~1)缩放到加权后的值(0~weight*3)
+    function fvsScale(raw, weight) {
+      return raw * weight * 3;
+    }
+
+    // 根据因子配置计算综合得分
+    function calcScore(fvs, enabledFactors) {
+      let total = 0;
+      enabledFactors.forEach(f => {
+        if (f.enabled) total += f.weight * fvs[f.name];
+      });
+      return total;
+    }
+
+    function genStocks(n, minScore, enabledFactors) {
+      const stocks = [];
+      for (let i = 0; i < n; i++) {
+        const fvs = genFactorValues();
+        const score = calcScore(fvs, enabledFactors);
+        const changePct = (Math.random() - 0.45) * 10;
+        stocks.push({
+          fvs,               // 保留因子原始值，供雷达图使用
+          code: String(600000 + Math.floor(Math.random() * 20000)).padStart(6, '0'),
+          name: stockNames[i % stockNames.length] + (i >= stockNames.length ? ' ' + (Math.floor(i / stockNames.length) + 1) : ''),
+          board: boards[i % boards.length],
+          score,
+          price: (Math.random() * 200 + 5).toFixed(2),
+          changePct,
+          ret20: (Math.random() - 0.4) * 30,
+          excess: (Math.random() - 0.45) * 20,
+          peRank: Math.floor(Math.random() * 100),
+          profitGrowth: (Math.random() - 0.3) * 80,
+          macd: Math.random() > 0.2 ? '正常' : '走弱',
+          confirm: Math.random() > 0.15 ? '通过' : '待确认',
+        });
+      }
+      // 按综合得分降序排列
+      return stocks.sort((a, b) => b.score - a.score);
+    }
+
+    const coreStocks = ref(genStocks(42, 6, factors.value));
+    const watchStocks = ref(genStocks(18, 3, factors.value));
+
+    const displayStocks = computed(()=>{
+      if(resultTab.value==='core') return coreStocks.value;
+      if(resultTab.value==='watch') return watchStocks.value;
+      return [...coreStocks.value,...watchStocks.value].sort((a,b)=>b.score-a.score);
+    });
+
+    const weightSum = computed(()=>factors.value.reduce((s,f)=>s+(f.enabled?f.weight:0),0));
+    const selectedPools = computed(()=>pools.value.filter(p=>p.selected));
+    const poolStockCount = computed(()=>{
+      if(!selectedPools.value.length) return 0;
+      return selectedPools.value.reduce((s,p)=>{
+        const n = parseInt(p.count.replace(/[^0-9]/g,''))||0;
+        return s+n;
+      },0);
+    });
+
+    const filteredHistory = computed(()=>{
+      return history.value.filter(h=>{
+        const matchSearch = !historySearch.value || h.name.includes(historySearch.value);
+        const matchDate = !historyDate.value || h.date === historyDate.value;
+        return matchSearch && matchDate;
+      });
+    });
+
+    function updateWeightSum() { }
+    function updatePoolCount() { }
+
+    function getScoreClass(score) {
+      if(score>=8) return 'score-high';
+      if(score>=6) return 'score-mid';
+      return 'score-low';
+    }
+
+    function applyPreset(p) {
+      preset.value = p;
+      if(p==='稳健'){
+        factors.value.forEach(f=>{ f.enabled=true; f.weight=f.defaultW; });
+      } else if(p==='激进'){
+        factors.value.forEach(f=>{
+          f.enabled = ['动量','趋势','相对强弱','量价'].includes(f.name);
+          f.weight = f.defaultW * 1.3;
+        });
+      } else if(p==='价值'){
+        factors.value.forEach(f=>{
+          f.enabled = ['业绩增速','PE分位','龙虎榜','北向资金'].includes(f.name);
+          f.weight = f.defaultW * 1.2;
+        });
+      }
+    }
+
+    function addLog(msg, type='info') {
+      const now = new Date();
+      const t = now.toTimeString().slice(0,8);
+      logs.value.push({time:t, msg, type});
+      if(logs.value.length>100) logs.value.shift();
+    }
+
+    function runTask() {
+      if(isRunning.value) return;
+      isRunning.value = true;
+      progressPct.value = 0;
+      logs.value = [];
+      const steps = [
+        [5,'初始化任务配置'],
+        [15,'连接数据源...'],
+        [30,'获取沪深300成分股列表'],
+        [45,'下载日线数据 (已处理 1200/3000)'],
+        [60,'计算趋势因子...'],
+        [72,'计算动量因子...'],
+        [83,'计算量价因子...'],
+        [90,'计算基本面因子...'],
+        [95,'二次确认与一票否决过滤'],
+        [98,'生成核心池/观察池'],
+        [100,'选股完成！'],
+      ];
+      let step = 0;
+      const interval = setInterval(()=>{
+        if(step<steps.length){
+          const [pct, msg] = steps[step];
+          progressPct.value = pct;
+          addLog(msg, pct<100?'info':'success');
+          step++;
+        } else {
+          clearInterval(interval);
+          isRunning.value = false;
+          coreStocks.value = genStocks(42, 6, factors.value);
+          watchStocks.value = genStocks(18, 3, factors.value);
+          nextTick(()=>renderCharts());
+        }
+      }, 300+Math.random()*400);
+    }
+
+    function showRadar(stock) {
+      radarStock.value = stock;
+      nextTick(()=>renderRadar(stock));
+    }
+
+    function renderRadar(stock) {
+      const el = document.getElementById('radarChart');
+      if(!el) return;
+      const chart = echarts.init(el);
+      chart.setOption({
+        radar: {
+          indicator: [
+            {name:'趋势',max:3},{name:'动量',max:3},{name:'量价',max:3},
+            {name:'位置',max:3},{name:'龙虎榜',max:3},{name:'量比',max:3},
+            {name:'相对强弱',max:3},{name:'回踩',max:3},{name:'暗盘资金',max:3},
+            {name:'北向资金',max:3},{name:'PE分位',max:3},{name:'业绩增速',max:3},
+          ],
+          shape:'polygon',
+          splitNumber:3,
+          axisName:{color:'#8b949e',fontSize:11},
+          splitLine:{lineStyle:{color:'#30363d'}},
+          splitArea:{areaStyle:{color:['#161b22','#1a1f25']}},
+        },
+        series:[{
+          type:'radar',
+          data:[{
+            value: factors.value.filter(f=>f.enabled).map(f=>+(fvsScale(stock.fvs[f.name], f.weight)).toFixed(2)),
+            name: stock.name,
+            areaStyle:{color:'#1f6feb66'},
+            lineStyle:{color:'#58a6ff',width:2},
+            itemStyle:{color:'#58a6ff'},
+          }],
+        }],
+      });
+    }
+
+    function renderCharts() {
+      const scores = coreStocks.value.map(s=>s.score);
+      const histogram = echarts.init(document.getElementById('histogramChart'));
+      histogram.setOption({
+        grid:{top:10,right:10,bottom:10,left:35,containLabel:false},
+        xAxis:{type:'category',data:Array.from({length:20},(_,i)=>(i+1).toString()),axisLine:{lineStyle:{color:'#30363d'}},axisLabel:{color:'#8b949e',fontSize:9},axisTick:{show:false}},
+        yAxis:{type:'value',axisLine:{show:false},axisLabel:{color:'#8b949e',fontSize:9},splitLine:{lineStyle:{color:'#21262d'}},axisTick:{show:false}},
+        series:[{type:'bar',data:scores.slice(0,20).map(s=>+(s*s/10).toFixed(1)),itemStyle:{color:'#1f6feb',borderRadius:[2,2,0,0]}}],
+      });
+
+      const pie = echarts.init(document.getElementById('pieChart'));
+      const boardCount = {上证:0,深证:0,创业板:0,科创板:0};
+      coreStocks.value.forEach(s=>{
+        if(s.board.includes('上')) boardCount['上证']++;
+        else if(s.board.includes('创')) boardCount['创业板']++;
+        else if(s.board.includes('科')) boardCount['科创板']++;
+        else boardCount['深证']++;
+      });
+      pie.setOption({
+        tooltip:{trigger:'item'},
+        series:[{type:'pie',radius:['40%','70%'],avoidLabelOverlap:false,
+          itemStyle:{borderRadius:4,borderColor:'#161b22',borderWidth:2},
+          label:{color:'#8b949e',fontSize:11},
+          data:Object.entries(boardCount).filter(([,v])=>v>0).map(([k,v])=>({name:k,value:v}))}],
+      });
+
+      const bar = echarts.init(document.getElementById('barChart'));
+      const top10 = [...coreStocks.value].sort((a,b)=>b.score-a.score).slice(0,10);
+      bar.setOption({
+        grid:{top:10,right:40,bottom:10,left:70,containLabel:false},
+        xAxis:{type:'value',axisLine:{show:false},axisLabel:{color:'#8b949e',fontSize:9},splitLine:{lineStyle:{color:'#21262d'}},axisTick:{show:false}},
+        yAxis:{type:'category',data:top10.map(s=>s.name.slice(0,4)).reverse(),axisLine:{lineStyle:{color:'#30363d'}},axisLabel:{color:'#8b949e',fontSize:10},axisTick:{show:false}},
+        series:[{type:'bar',data:top10.map(s=>+s.score.toFixed(2)).reverse(),itemStyle:{color:'#3fb950',borderRadius:[0,4,4,0]}}],
+      });
+    }
+
+    function doDownload() {
+      addLog(`开始下载: ${downloadFormat.value.toUpperCase()} | 内容: ${downloadContent.value.join(',')}`, 'info');
+      showDownloadModal.value = false;
+    }
+
+    function createSchedule() {
+      const id = schedules.value.length+1;
+      schedules.value.push({id, name:newSchedule.value.name||'新任务', freq:newSchedule.value.freq, time:newSchedule.value.time, mode:newSchedule.value.mode, interval:newSchedule.value.mode==='盘中'?newSchedule.value.interval:null, enabled:true, lastRun:'从未'});
+      newSchedule.value = {name:'', freq:'每天', time:'15:30', mode:'盘后', interval:null};
+      showScheduleModal.value = false;
+      addLog(`定时任务创建成功`, 'success');
+    }
+
+    function runScheduleNow(t) { addLog(`立即执行任务: ${t.name}`, 'info'); }
+    function toggleSchedule(t) { t.enabled=!t.enabled; addLog(`任务${t.name}已${t.enabled?'启用':'暂停'}`, 'warn'); }
+    function deleteSchedule(id) { schedules.value=schedules.value.filter(s=>s.id!==id); addLog('任务已删除', 'warn'); }
+    function viewHistory(h) { addLog(`查看历史结果: ${h.name}`, 'info'); }
+    function downloadHistory(h) { addLog(`下载历史结果: ${h.name}`, 'info'); }
+
+    onMounted(()=>{
+      nextTick(()=>renderCharts());
+      window.addEventListener('resize', ()=>{
+        echarts.getInstanceByDom(document.getElementById('histogramChart'))?.resize();
+        echarts.getInstanceByDom(document.getElementById('pieChart'))?.resize();
+        echarts.getInstanceByDom(document.getElementById('barChart'))?.resize();
+      });
+    });
+
+    return {
+      auth, doLogin, doRegister, doLogout,
+      activePage, resultTab, isRunning, progressPct, logs, preset,
+      factors, pools, filters, hardFilter, weightSum, selectedPools, poolStockCount,
+      coreStocks, watchStocks, displayStocks, getScoreClass,
+      showDownloadModal, downloadContent, downloadFormat, downloadIncludes,
+      showScheduleModal, newSchedule, schedules,
+      historySearch, historyDate, history, filteredHistory,
+      datasources, mySchemes, radarStock, execMode,
+      updateWeightSum, updatePoolCount, applyPreset, runTask, showRadar, doDownload,
+      runScheduleNow, toggleSchedule, deleteSchedule, viewHistory, downloadHistory,
+    };
+  }
+}).use(ElementPlus).mount('#app');
+</script>
+</body>
+</html>
